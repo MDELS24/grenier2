@@ -4,7 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 concurrency:
@@ -12,26 +12,35 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deploy:
-    if: vars.VITE_SUPABASE_URL != '' && vars.VITE_SUPABASE_PUBLISHABLE_KEY != ''
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    defaults:
-      run:
-        working-directory: source
     steps:
       - uses: actions/checkout@v4
-      - name: Extract source
-        working-directory: .
-        run: unzip -q source.zip -d source
+      - name: Install source tree at repository root (one time)
+        if: hashFiles('source.zip') != ''
+        run: |
+          unzip -q source.zip -d /tmp/grenier2-source
+          rsync -a --exclude='.github' /tmp/grenier2-source/ ./
+          git rm source.zip
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m "Move documented application sources to repository root"
+          git push origin HEAD:main
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: source/package-lock.json
       - run: npm ci
+      - run: npm run format:check
       - run: npm test
+      - name: Check Supabase configuration
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: test -n "$VITE_SUPABASE_URL" && test -n "$VITE_SUPABASE_PUBLISHABLE_KEY"
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
@@ -39,6 +48,6 @@ jobs:
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: source/dist
+          path: dist
       - uses: actions/deploy-pages@v4
         id: deployment
