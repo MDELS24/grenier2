@@ -4,7 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 concurrency:
@@ -18,17 +18,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install source tree at repository root (one time)
-        if: hashFiles('source.zip') != ''
-        run: |
-          unzip -q source.zip -d /tmp/grenier2-source
-          rsync -a --exclude='.github' /tmp/grenier2-source/ ./
-          git rm source.zip
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .
-          git commit -m "Move documented application sources to repository root"
-          git push origin HEAD:main
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
