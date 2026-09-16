@@ -132,7 +132,12 @@ export default function InventoryTransfer({
               type="file"
               accept=".csv,text/csv,text/plain"
               disabled={busy}
-              onChange={(e) => void read(e.target.files?.[0])}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                // Permet de sélectionner à nouveau le même fichier après un import.
+                e.target.value = '';
+                void read(file);
+              }}
             />
           </label>
           {error && (
