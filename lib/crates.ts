@@ -9,6 +9,10 @@ export const categories = [
 /** Fiche persistée ; `location` est la place habituelle, `revision` protège les écritures. */
 export type Crate = {
   id: string;
+  /** Repère affiché et modifiable ; id reste la clé interne immuable. */
+  code?: string;
+  itemlist_data?: Record<string, string>[];
+  source_key?: string | null;
   name: string;
   location: string;
   category: string;
@@ -22,6 +26,7 @@ export type Crate = {
 };
 export const emptyCrate: Crate = {
   id: '',
+  code: '',
   name: '',
   location: '',
   category: 'Autre',
@@ -66,7 +71,9 @@ export const due = (b: Crate, today = localDate()) =>
 export const searchCrates = (boxes: Crate[], query: string) =>
   boxes.filter((b) =>
     normalize(
-      [b.id, b.name, b.items, b.location, b.temporary_location, b.notes, b.move_note].join(' '),
+      [b.code, b.id, b.name, b.items, b.location, b.temporary_location, b.notes, b.move_note].join(
+        ' ',
+      ),
     ).includes(normalize(query)),
   );
 export function formatDate(value: string) {
@@ -76,3 +83,6 @@ export function formatDate(value: string) {
     year: 'numeric',
   }).format(new Date(value.length === 10 ? value + 'T12:00:00' : value));
 }
+
+/** Conserve l’affichage des anciennes fiches pendant une migration progressive. */
+export const crateCode = (box: Crate) => box.code || box.id;
