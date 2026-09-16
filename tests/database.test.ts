@@ -19,6 +19,13 @@ test('Postgres: inventory, movements, conflicts and access control', async () =>
         'utf8',
       ),
     );
+    for (const migration of [
+      '202609150001_inventory_options.sql',
+      '202609150002_inventory_import.sql',
+    ])
+      await db.exec(
+        await readFile(new URL('../supabase/migrations/' + migration, import.meta.url), 'utf8'),
+      );
     const identity = async (email: string, id = '11111111-1111-4111-8111-111111111111') => {
       await db.query("select set_config('request.jwt.claims',$1,false)", [
         JSON.stringify({ sub: id, email }),
@@ -106,6 +113,48 @@ test('Postgres: inventory, movements, conflicts and access control', async () =>
     await identity('lienmathieu2@gmail.com');
     await mutate('DELETE', row);
     assert.equal((await db.query('select * from public.boxes')).rows.length, 0);
+    const base = { name: 'Essai', location: 'Grenier', category: 'Autre', items: 'PLA', notes: '' };
+    let custom = await mutate('POST', { ...base, code: '3D-01' });
+    assert.equal(custom.code, '3D-01');
+    const stableId = custom.id;
+    custom = await mutate('PUT', { ...custom, code: 'Boîte Noël' });
+    assert.equal(custom.id, stableId);
+    assert.equal(custom.code, 'Boîte Noël');
+    await assert.rejects(mutate('POST', { ...base, code: 'boîte noël' }), /déjà utilisé/);
+    const auto = await mutate('POST', base);
+    assert.match(auto.code!, /^G-\d{6,}$/);
+    await db.query("select public.manage_category('add','Loisirs perso')");
+    custom = await mutate('PUT', { ...custom, category: 'Loisirs perso' });
+    await db.query("select public.manage_category('delete','Loisirs perso')");
+    const changed = (await db.query<Crate>('select * from public.boxes where id=$1', [custom.id]))
+      .rows[0];
+    assert.equal(changed.category, 'Autre');
+    assert.equal(changed.revision, custom.revision + 1);
+    await assert.rejects(
+      db.query("select public.manage_category('delete','Autre')"),
+      /personnalisées/,
+    );
+    const batch = [
+      { ...base, code: 'IMPORT-1' },
+      { ...base, code: 'IMPORT-2', name: '' },
+    ];
+    await assert.rejects(
+      db.query('select public.import_inventory($1::jsonb,true)', [JSON.stringify(batch)]),
+    );
+    assert.equal(
+      (await db.query("select * from public.boxes where code='IMPORT-1'")).rows.length,
+      0,
+    );
+    await db.query('select public.import_inventory($1::jsonb,true)', [JSON.stringify([batch[0]])]);
+    const repeated = await db.query<{ r: { added: number; skipped: number } }>(
+      'select public.import_inventory($1::jsonb,true) as r',
+      [JSON.stringify([batch[0]])],
+    );
+    assert.deepEqual(repeated.rows[0].r, { added: 0, skipped: 1 });
+    await assert.rejects(
+      db.query("select public.mutate_crate_original('POST','{}')"),
+      /permission denied/,
+    );
   } finally {
     await db.close();
   }
