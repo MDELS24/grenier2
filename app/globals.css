@@ -1092,3 +1092,51 @@ h2 span {
     justify-content: center;
   }
 }
+
+.inventory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.category-management {
+  max-height: 45vh;
+  overflow: auto;
+  padding: 0;
+  list-style: none;
+}
+.category-management li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #e2e8e4;
+}
+.category-management small {
+  color: #617169;
+}
+
+.csv-mapping {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+.csv-mapping label {
+  min-width: 0;
+}
+.csv-mapping select {
+  max-width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #cbd5cf;
+  border-radius: 6px;
+}
+.crate-dialog input[type='checkbox'] {
+  width: auto;
+  margin-right: 0.5rem;
+}
+@media (max-width: 500px) {
+  .csv-mapping {
+    grid-template-columns: 1fr;
+  }
+}

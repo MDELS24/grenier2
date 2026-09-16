@@ -1,4 +1,6 @@
-import { listCrates, mutateCrate, CrateError } from '@/lib/api';
+import InventoryTransfer from './inventory-transfer';
+import CategoryManager from './category-manager';
+import { listCrates, mutateCrate, CrateError, listCategories } from '@/lib/api';
 ('use client');
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -44,7 +46,8 @@ import {
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
 import {
-  categories,
+  categories as defaultCategories,
+  crateCode,
   emptyCrate,
   currentLocation,
   countItems,
@@ -74,6 +77,7 @@ function ReturnDate({ box, today }: { box: Crate; today: string }) {
 }
 /** Inventaire : la place habituelle reste distincte de l’emplacement temporaire. */
 export default function Home() {
+  const [categories, setCategories] = useState(defaultCategories);
   const [boxes, setBoxes] = useState<Crate[]>([]),
     [loading, setLoading] = useState(true),
     [loadError, setLoadError] = useState(''),
@@ -96,9 +100,10 @@ export default function Home() {
     const request = ++sequence.current;
     if (showLoading) setLoading(true);
     try {
-      const data = await listCrates();
+      const [data, categoryRows] = await Promise.all([listCrates(), listCategories()]);
       if (request === sequence.current) {
         setBoxes(data);
+        setCategories(categoryRows.map((c) => c.name));
         setLoadError('');
       }
     } catch {
@@ -368,6 +373,15 @@ export default function Home() {
             </p>
           </aside>
         </section>
+        <div className="inventory-actions">
+          <InventoryTransfer boxes={boxes} onChange={() => void refresh()} />
+          <CategoryManager
+            onChange={() => {
+              setCategory('Toutes');
+              void refresh();
+            }}
+          />
+        </div>
         <section className="inventory">
           <div className="section-heading">
             <h2>
@@ -491,7 +505,7 @@ export default function Home() {
                     </div>
                     <div className="crate-label">
                       <Box size={28} />
-                      <span>{b.id}</span>
+                      <span>{crateCode(b)}</span>
                     </div>
                     <h3>{b.name}</h3>
                   </button>
@@ -596,7 +610,9 @@ export default function Home() {
         }}
       >
         <DialogContent className="crate-dialog">
-          <DialogTitle>{draft.id ? `${draft.id} · Ma caisse` : 'Une nouvelle caisse'}</DialogTitle>
+          <DialogTitle>
+            {draft.id ? `${crateCode(draft)} · Ma caisse` : 'Une nouvelle caisse'}
+          </DialogTitle>
           <DialogDescription>
             {draft.id
               ? 'Son rangement permanent et les objets qu’elle contient.'
@@ -636,6 +652,20 @@ export default function Home() {
             </div>
           )}
           <form onSubmit={save}>
+            <label>
+              Repère / numéro de caisse
+              <input
+                maxLength={60}
+                value={draft.code ?? draft.id}
+                onChange={(e) => setDraft({ ...draft, code: e.target.value })}
+                placeholder="Automatique : G-000001"
+                required={!!draft.id}
+              />
+            </label>
+            <p className="field-help">
+              Laissez vide à la création pour un numéro automatique. Vous pouvez ensuite choisir
+              librement un repère unique : 3D-01, Noël, A12…
+            </p>
             <label>
               Nom de la caisse
               <input
@@ -743,7 +773,7 @@ export default function Home() {
               : 'Déplacer temporairement'}
           </DialogTitle>
           <DialogDescription>
-            {movement?.box.name} · {movement?.box.id}
+            {movement?.box.name} · {movement ? crateCode(movement.box) : ''}
           </DialogDescription>
           {movement && (
             <form onSubmit={saveMovement}>
