@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Archive, Mail, LogOut } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 import { allowedEmail, supabase } from '@/lib/supabase';
+import { rememberQr } from '@/lib/qr';
 const Home = lazy(() => import('./page'));
 import './globals.css';
 /** Gère la session Supabase et affiche la connexion ou l’inventaire privé. */
@@ -17,6 +18,11 @@ function App() {
   useEffect(() => {
     if (!supabase) return;
     let active = true;
+    try {
+      rememberQr(location.search, localStorage);
+    } catch {
+      /* Le lien direct fonctionne aussi sans stockage local. */
+    }
     const fragment = new URLSearchParams(location.hash.slice(1));
     if (fragment.has('error')) {
       setError('Ce lien a expiré ou a déjà été utilisé. Demandez un nouveau lien.');

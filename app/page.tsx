@@ -1,5 +1,7 @@
 import InventoryTransfer from './inventory-transfer';
 import CategoryManager from './category-manager';
+import QrManager from './qr-manager';
+import { appendContents, takePendingQr } from '@/lib/qr';
 import { listCrates, mutateCrate, CrateError, listCategories } from '@/lib/api';
 ('use client');
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -95,6 +97,9 @@ export default function Home() {
     [returning, setReturning] = useState<Crate | null>(null),
     [today, setToday] = useState(localDate());
   const sequence = useRef(0);
+  const [addingTo, setAddingTo] = useState<Crate | null>(null);
+  const [addition, setAddition] = useState('');
+  const handledQrLink = useRef(false);
   // Ignore les réponses anciennes qui arrivent après une nouvelle requête ou écriture.
   const refresh = useCallback(async (showLoading = false) => {
     const request = ++sequence.current;
@@ -132,6 +137,35 @@ export default function Home() {
       clearInterval(timer);
     };
   }, [refresh]);
+  useEffect(() => {
+    if (loading || loadError || handledQrLink.current) return;
+    const params = new URLSearchParams(window.location.search);
+    let pending: ReturnType<typeof takePendingQr> = null;
+    try {
+      pending = takePendingQr(localStorage);
+    } catch {
+      /* Stockage optionnel. */
+    }
+    const id = params.get('caisse') || pending?.id;
+    if (!id) return;
+    handledQrLink.current = true;
+    const target = boxes.find((box) => box.id === id);
+    if (!target) {
+      toast.error('Cette caisse n’existe plus ou n’est pas accessible.');
+      return;
+    }
+    const add = params.has('caisse') ? params.get('action') === 'add' : pending?.action === 'add';
+    params.delete('caisse');
+    params.delete('action');
+    history.replaceState(
+      null,
+      '',
+      window.location.pathname +
+        (params.size ? '?' + params.toString() : '') +
+        window.location.hash,
+    );
+    edit(target, add);
+  }, [boxes, loading, loadError]);
   useEffect(() => {
     const context = (
       document as Document & {
@@ -285,10 +319,46 @@ export default function Home() {
       setBusy(false);
     }
   }
-  function edit(b: Crate) {
+  function edit(b: Crate, addContent = false) {
+    if (addContent) {
+      setAddingTo({ ...b });
+      setAddition('');
+      setFormError('');
+      return;
+    }
     setDraft({ ...b });
     setFormError('');
     setOpen(true);
+  }
+  async function saveAddition(e: React.FormEvent) {
+    e.preventDefault();
+    if (!addingTo) return;
+    setBusy(true);
+    setFormError('');
+    try {
+      const row = await requestRow('PUT', {
+        ...addingTo,
+        items: appendContents(addingTo.items, addition),
+      });
+      applyRow(row);
+      setAddingTo(null);
+      edit(row);
+      toast.success('Objets ajoutés à la caisse.');
+    } catch (error) {
+      setFormError((error as Error).message);
+      // Conserve la saisie et recharge la fiche pour pouvoir retenter après un conflit.
+      if (error instanceof CrateError && error.status === 409) {
+        try {
+          const rows = await listCrates();
+          const fresh = rows.find((b) => b.id === addingTo.id);
+          if (fresh) setAddingTo(fresh);
+        } catch {
+          /* Le message reste affiché. */
+        }
+      }
+    } finally {
+      setBusy(false);
+    }
   }
   /** Propose sept jours pour un nouveau déplacement et conserve les données existantes. */
   function startMove(b: Crate) {
@@ -381,6 +451,7 @@ export default function Home() {
               void refresh();
             }}
           />
+          <QrManager boxes={boxes} onOpen={edit} />
         </div>
         <section className="inventory">
           <div className="section-heading">
@@ -757,6 +828,44 @@ export default function Home() {
                 {busy ? 'Enregistrement…' : 'Enregistrer la caisse'}
               </button>
             </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!addingTo}
+        onOpenChange={(v) => {
+          if (!busy && !v) setAddingTo(null);
+        }}
+      >
+        <DialogContent className="crate-dialog">
+          <DialogTitle>Ajouter du contenu · {addingTo && crateCode(addingTo)}</DialogTitle>
+          <DialogDescription>
+            {addingTo?.name} — les objets déjà enregistrés sont conservés.
+          </DialogDescription>
+          <details>
+            <summary>Contenu actuel</summary>
+            <p style={{ whiteSpace: 'pre-wrap' }}>{addingTo?.items || 'Aucun objet renseigné'}</p>
+          </details>
+          <form onSubmit={saveAddition}>
+            <label>
+              Nouveaux objets — un par ligne
+              <textarea
+                autoFocus
+                required
+                rows={5}
+                maxLength={10000}
+                value={addition}
+                onChange={(e) => setAddition(e.target.value)}
+              />
+            </label>
+            {formError && (
+              <p role="alert" className="error">
+                {formError}
+              </p>
+            )}
+            <button type="submit" className="primary" disabled={busy}>
+              {busy ? 'Enregistrement…' : 'Ajouter ces objets'}
+            </button>
           </form>
         </DialogContent>
       </Dialog>
