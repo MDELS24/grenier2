@@ -9,7 +9,10 @@ import {
   takePendingQr,
 } from '../lib/qr.ts';
 import QRCode from 'qrcode';
-import { BinaryBitmap, HybridBinarizer, RGBLuminanceSource, QRCodeReader } from '@zxing/library';
+import ZXing from '@zxing/library';
+
+// L’export par défaut assure la compatibilité CommonJS avec Node 22 et 24.
+const { BinaryBitmap, HybridBinarizer, RGBLuminanceSource, QRCodeReader } = ZXing;
 
 test('QR: lien stable, mode ajout et repère seul', () => {
   const box = { ...emptyCrate, id: 'internal-1', code: 'PLA / 42', name: 'Bobines' };
