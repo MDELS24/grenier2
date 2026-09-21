@@ -6,12 +6,17 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { crateCode, type Crate } from '@/lib/crates';
 import { crateQrValue, resolveQrValue, type QrAction } from '@/lib/qr';
 
-type Props = { boxes: Crate[]; onOpen: (box: Crate, addContent: boolean) => void };
+type Props = {
+  boxes: Crate[];
+  onOpen: (box: Crate, addContent: boolean) => void;
+  requestedCrate?: Crate | null;
+};
 type Label = { id: string; code: string; name: string; svg: string; value: string };
 const captions = { view: 'Voir le contenu', add: 'Ajouter du contenu', code: 'Numéro de caisse' };
 
 /** Les étiquettes SVG et les trames de caméra restent uniquement en mémoire. */
-export default function QrManager({ boxes, onOpen }: Props) {
+export default function QrManager({ boxes, onOpen, requestedCrate }: Props) {
+  const [fixedId, setFixedId] = useState<string | null>(null);
   const [open, setOpen] = useState(false),
     [tab, setTab] = useState<'make' | 'scan'>('make');
   const [selected, setSelected] = useState(''),
@@ -29,9 +34,19 @@ export default function QrManager({ boxes, onOpen }: Props) {
   const stream = useRef<MediaStream | null>(null),
     cameraRun = useRef(0);
   const selectedBoxes = useMemo(
-    () => (selected === '*' ? boxes : boxes.filter((b) => b.id === selected)),
-    [boxes, selected],
+    () => boxes.filter((b) => (fixedId ? b.id === fixedId : selected === '*' || b.id === selected)),
+    [boxes, selected, fixedId],
   );
+  // Le détail impose l’identifiant enregistré : aucune autre caisse ne peut être imprimée.
+  useEffect(() => {
+    if (!requestedCrate) return;
+    setFixedId(requestedCrate.id);
+    setSelected(requestedCrate.id);
+    setTab('make');
+    setAction('view');
+    setCopies(1);
+    setOpen(true);
+  }, [requestedCrate]);
   // Empêche une réponse asynchrone ancienne de changer l’étiquette.
   const labelInput = JSON.stringify(
     selectedBoxes.map((b) => ({ id: b.id, code: crateCode(b), name: b.name })),
@@ -188,6 +203,7 @@ export default function QrManager({ boxes, onOpen }: Props) {
       <button
         className="secondary"
         onClick={() => {
+          setFixedId(null);
           setError('');
           setOpen(true);
         }}
@@ -218,7 +234,7 @@ export default function QrManager({ boxes, onOpen }: Props) {
             Imprimez vos étiquettes ou retrouvez une caisse avec la caméra. Aucune image n’est
             enregistrée ni envoyée.
           </DialogDescription>
-          <div className="qr-tabs">
+          <div className="qr-tabs" hidden={!!fixedId}>
             <button
               aria-pressed={tab === 'make'}
               className={tab === 'make' ? 'active' : ''}
@@ -245,9 +261,13 @@ export default function QrManager({ boxes, onOpen }: Props) {
                 <>
                   <label>
                     Caisse à encoder
-                    <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-                      <option value="*">Toutes les caisses ({boxes.length})</option>
-                      {boxes.map((b) => (
+                    <select
+                      value={fixedId || selected}
+                      disabled={!!fixedId}
+                      onChange={(e) => setSelected(e.target.value)}
+                    >
+                      {!fixedId && <option value="*">Toutes les caisses ({boxes.length})</option>}
+                      {(fixedId ? selectedBoxes : boxes).map((b) => (
                         <option key={b.id} value={b.id}>
                           {crateCode(b)} · {b.name}
                         </option>

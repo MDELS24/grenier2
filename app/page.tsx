@@ -80,6 +80,7 @@ function ReturnDate({ box, today }: { box: Crate; today: string }) {
 /** Inventaire : la place habituelle reste distincte de l’emplacement temporaire. */
 export default function Home() {
   const [categories, setCategories] = useState(defaultCategories);
+  const [qrCrate, setQrCrate] = useState<Crate | null>(null);
   const [boxes, setBoxes] = useState<Crate[]>([]),
     [loading, setLoading] = useState(true),
     [loadError, setLoadError] = useState(''),
@@ -451,7 +452,7 @@ export default function Home() {
               void refresh();
             }}
           />
-          <QrManager boxes={boxes} onOpen={edit} />
+          <QrManager boxes={boxes} onOpen={edit} requestedCrate={qrCrate} />
         </div>
         <section className="inventory">
           <div className="section-heading">
@@ -813,6 +814,27 @@ export default function Home() {
               </p>
             )}
             <div className="form-actions">
+              {draft.id && (
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    const saved = boxes.find((box) => box.id === draft.id);
+                    // Une étiquette ne doit jamais porter un numéro encore non enregistré.
+                    if (!saved || saved.code !== draft.code || saved.name !== draft.name) {
+                      setFormError(
+                        'Enregistrez le numéro et le nom de la caisse avant d’imprimer son QR code.',
+                      );
+                      return;
+                    }
+                    setFormError('');
+                    setQrCrate({ ...saved });
+                  }}
+                >
+                  Imprimer le QR code
+                </button>
+              )}
               {draft.id && (
                 <button
                   type="button"
