@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpDown, ListChecks, MoveRight, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -20,11 +20,14 @@ export default function CrateTable({
   boxes,
   onChange,
   onOpen,
+  openRequest = 0,
 }: {
   boxes: Crate[];
   onChange: () => void;
   onOpen: (box: Crate) => void;
+  openRequest?: number;
 }) {
+  const handledOpenRequest = useRef(openRequest);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<SortKey>('code');
@@ -34,6 +37,12 @@ export default function CrateTable({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (openRequest === handledOpenRequest.current) return;
+    handledOpenRequest.current = openRequest;
+    openTable();
+  }, [openRequest]);
 
   const rows = useMemo(() => {
     const value = (box: Crate) => {

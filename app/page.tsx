@@ -20,6 +20,7 @@ import {
   Undo2,
   Clock3,
   RefreshCw,
+  ListChecks,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
@@ -82,6 +83,7 @@ function ReturnDate({ box, today }: { box: Crate; today: string }) {
 export default function Home() {
   const [categories, setCategories] = useState(defaultCategories);
   const [qrCrate, setQrCrate] = useState<Crate | null>(null);
+  const [tableRequest, setTableRequest] = useState(0);
   const [boxes, setBoxes] = useState<Crate[]>([]),
     [loading, setLoading] = useState(true),
     [loadError, setLoadError] = useState(''),
@@ -388,10 +390,6 @@ export default function Home() {
           </span>
           grenier2<span className="brand-dot">.</span>
         </a>
-        <span className="top-label">UNE PLACE POUR CHAQUE CHOSE</span>
-        <span className="home-label">
-          <MapPin size={16} /> Mon grenier
-        </span>
       </header>
       <main>
         <div className="page-heading">
@@ -447,7 +445,12 @@ export default function Home() {
         </section>
         <div className="inventory-actions">
           <InventoryTransfer boxes={boxes} onChange={() => void refresh()} />
-          <CrateTable boxes={boxes} onChange={() => void refresh()} onOpen={edit} />
+          <CrateTable
+            boxes={boxes}
+            onChange={() => void refresh()}
+            onOpen={edit}
+            openRequest={tableRequest}
+          />
           <CategoryManager
             onChange={() => {
               setCategory('Toutes');
@@ -692,6 +695,17 @@ export default function Home() {
               ? 'Son rangement permanent et les objets qu’elle contient.'
               : 'Donnez-lui un nom et une place habituelle.'}
           </DialogDescription>
+          {draft.id && (
+            <div className="edit-dialog-nav">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setTableRequest((request) => request + 1)}
+              >
+                <ListChecks size={16} /> Tableau des caisses
+              </button>
+            </div>
+          )}
           {draft.id && (
             <div className="detail-movement">
               <span className="where-label">Actuellement</span>
