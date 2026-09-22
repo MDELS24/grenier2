@@ -16,7 +16,15 @@ import { countItems, crateCode, currentLocation, type Crate } from '@/lib/crates
 type SortKey = 'code' | 'name' | 'category' | 'home' | 'current' | 'items';
 
 /** Vue compacte pour trier l'inventaire et appliquer une action à plusieurs caisses. */
-export default function CrateTable({ boxes, onChange }: { boxes: Crate[]; onChange: () => void }) {
+export default function CrateTable({
+  boxes,
+  onChange,
+  onOpen,
+}: {
+  boxes: Crate[];
+  onChange: () => void;
+  onOpen: (box: Crate) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<SortKey>('code');
@@ -60,6 +68,10 @@ export default function CrateTable({ boxes, onChange }: { boxes: Crate[]; onChan
       else next.add(id);
       return next;
     });
+  }
+  function openCrate(box: Crate) {
+    setOpen(false);
+    onOpen(box);
   }
   async function run(action: 'move' | 'delete') {
     const targets = rows.filter((box) => selected.has(box.id));
@@ -191,12 +203,25 @@ export default function CrateTable({ boxes, onChange }: { boxes: Crate[]; onChan
               </thead>
               <tbody>
                 {rows.map((box) => (
-                  <tr key={box.id} className={selected.has(box.id) ? 'selected' : ''}>
+                  <tr
+                    key={box.id}
+                    className={selected.has(box.id) ? 'selected' : ''}
+                    tabIndex={0}
+                    aria-label={`Ouvrir ${crateCode(box)} · ${box.name}`}
+                    onClick={() => openCrate(box)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openCrate(box);
+                      }
+                    }}
+                  >
                     <td>
                       <input
                         type="checkbox"
                         aria-label={`Sélectionner ${crateCode(box)} · ${box.name}`}
                         checked={selected.has(box.id)}
+                        onClick={(event) => event.stopPropagation()}
                         onChange={() => toggle(box.id)}
                       />
                     </td>

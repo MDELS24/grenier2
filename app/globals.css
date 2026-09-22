@@ -684,6 +684,13 @@ h2 span {
 .crate-table tbody tr.selected {
   background: #f1f7f2;
 }
+.crate-table tbody tr {
+  cursor: pointer;
+}
+.crate-table tbody tr:focus-visible {
+  outline: 2px solid #255d4b;
+  outline-offset: -2px;
+}
 .crate-table input[type='checkbox'] {
   width: 17px;
   height: 17px;

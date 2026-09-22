@@ -447,7 +447,7 @@ export default function Home() {
         </section>
         <div className="inventory-actions">
           <InventoryTransfer boxes={boxes} onChange={() => void refresh()} />
-          <CrateTable boxes={boxes} onChange={() => void refresh()} />
+          <CrateTable boxes={boxes} onChange={() => void refresh()} onOpen={edit} />
           <CategoryManager
             onChange={() => {
               setCategory('Toutes');
