@@ -1,16 +1,19 @@
 # Grenier2
 
-Grenier2 est une application web conçue pour inventorier des caisses et retrouver facilement ce qu’elles contiennent. Elle permet de savoir où se trouve chaque caisse, même lorsqu’elle quitte temporairement sa place habituelle.
+Grenier2 est une application web conçue pour inventorier des caisses, les boîtes qu’elles contiennent et les objets rangés à l’intérieur. Elle permet de retrouver chaque élément, même lorsqu’un contenant quitte temporairement sa place habituelle.
 
 **[Ouvrir l’application](https://mdels24.github.io/grenier2/)**
 
 ## Ce que l’application permet de faire
 
-- enregistrer une caisse, son contenu, sa catégorie et sa place habituelle ;
+- enregistrer une caisse, son étagère, son contenu, sa catégorie et sa place habituelle ;
+- ranger des boîtes numérotées dans les caisses ;
+- retrouver un objet par son chemin complet : boîte, caisse et emplacement ;
 - choisir librement son numéro ou utiliser la numérotation proposée ;
 - rechercher une caisse par son nom, son numéro, son contenu ou son emplacement ;
 - filtrer et classer l’inventaire selon plusieurs critères ;
 - déplacer temporairement une ou plusieurs caisses ;
+- déplacer une boîte vers une autre caisse ou à l’extérieur, temporairement ou définitivement ;
 - indiquer une date de retour et repérer les caisses à remettre en place ;
 - gérer ses propres catégories ;
 - importer ou exporter un inventaire au format CSV ;
@@ -23,13 +26,13 @@ Chaque caisse conserve une **place habituelle**. C’est l’endroit où elle do
 
 Lorsqu’une caisse est utilisée ailleurs, le déplacement temporaire indique son emplacement actuel sans effacer sa place habituelle. Par exemple, une caisse de matériel d’impression 3D peut rester une semaine dans le bureau, puis être remise au grenier en un clic.
 
-Le tableau des caisses permet aussi de sélectionner plusieurs caisses pour les déplacer ensemble ou effectuer rapidement une opération de rangement.
+Le tableau des caisses permet aussi de sélectionner plusieurs caisses pour les déplacer ensemble ou effectuer rapidement une opération de rangement. Des tableaux dédiés donnent une vue d’ensemble des boîtes et des objets.
 
 ## QR codes
 
-Grenier2 peut produire des étiquettes QR à imprimer pour une caisse ou pour l’ensemble de l’inventaire. Un QR peut :
+Grenier2 peut produire des étiquettes QR à imprimer pour une caisse, une boîte ou pour l’ensemble de l’inventaire. Un QR peut :
 
-- ouvrir la fiche et afficher le contenu de la caisse ;
+- ouvrir la fiche et afficher le contenu de la caisse ou de la boîte ;
 - ouvrir directement l’ajout de contenu ;
 - afficher simplement le numéro de la caisse.
 
