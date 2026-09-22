@@ -24,6 +24,7 @@ test('Postgres: inventory, movements, conflicts and access control', async () =>
       '202609150001_inventory_options.sql',
       '202609150002_inventory_import.sql',
       '202609220001_storage_hierarchy.sql',
+      '202609220002_database_hardening.sql',
     ])
       await db.exec(
         await readFile(new URL('../supabase/migrations/' + migration, import.meta.url), 'utf8'),
@@ -132,6 +133,17 @@ test('Postgres: inventory, movements, conflicts and access control', async () =>
     await assert.rejects(mutate('POST', { ...base, code: 'boîte noël' }), /déjà utilisé/);
     const auto = await mutate('POST', base);
     assert.match(auto.code!, /^G-\d{6,}$/);
+    await db.exec('reset role');
+    await assert.rejects(
+      db.query(
+        `insert into public.inner_boxes(owner_id,code,name,home_crate_id)
+         values ('22222222-2222-4222-8222-222222222222','B-CROSS','Interdit',$1)`,
+        [custom.id],
+      ),
+      /foreign key/i,
+    );
+    await db.exec('set role authenticated');
+    await identity('lienmathieu2@gmail.com');
     let inner = await mutateInner('POST', {
       code: '',
       name: 'Visserie M3',
