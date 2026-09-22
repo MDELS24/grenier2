@@ -1,14 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ArrowUpDown,
-  Box as BoxIcon,
-  Boxes,
-  MoveRight,
-  Plus,
-  QrCode,
-  Trash2,
-  Undo2,
-} from 'lucide-react';
+import { ArrowUpDown, Boxes, MoveRight, PackagePlus, QrCode, Trash2, Undo2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -225,15 +216,22 @@ export default function InnerBoxManager({
 
   return (
     <>
-      <button className="secondary" onClick={() => setTableOpen(true)}>
-        <Boxes size={17} /> Tableau des boîtes
+      <button
+        className="secondary menu-icon-button"
+        onClick={() => setTableOpen(true)}
+        aria-label="Tableau des boîtes"
+        title="Tableau des boîtes"
+      >
+        <Boxes />
       </button>
       <button
-        className="secondary"
+        className="secondary menu-icon-button"
         onClick={() => setEditor({ ...emptyInnerBox, home_crate_id: crates[0]?.id || '' })}
         disabled={!crates.length}
+        aria-label="Nouvelle boîte"
+        title="Nouvelle boîte"
       >
-        <Plus size={17} /> Nouvelle boîte
+        <PackagePlus />
       </button>
 
       <Dialog open={tableOpen} onOpenChange={(value) => !busy && setTableOpen(value)}>

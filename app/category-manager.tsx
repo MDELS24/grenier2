@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Tags } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -48,8 +49,13 @@ export default function CategoryManager({ onChange }: { onChange: () => void }) 
   }
   return (
     <>
-      <button className="secondary" onClick={() => setOpen(true)}>
-        Gérer les catégories
+      <button
+        className="secondary menu-icon-button"
+        onClick={() => setOpen(true)}
+        aria-label="Gérer les catégories"
+        title="Gérer les catégories"
+      >
+        <Tags />
       </button>
       <Dialog
         open={open}

@@ -459,47 +459,39 @@ export default function Home() {
           </button>
         </div>
         <section className="stats has-boxes" aria-label="Résumé de votre rangement">
-          <div>
-            <span className="stat-icon">
-              <Box />
+          <div aria-label={`${boxes.length} caisses répertoriées`}>
+            <strong>{boxes.length.toString().padStart(2, '0')}</strong>
+            <span className="stat-icon" title="Caisses répertoriées" aria-hidden="true">
+              <Archive />
             </span>
-            <div>
-              <strong>{boxes.length.toString().padStart(2, '0')}</strong>
-              <span>caisses répertoriées</span>
-            </div>
           </div>
-          <div>
-            <span className="stat-icon">
+          <div aria-label={`${innerBoxes.length} boîtes intérieures`}>
+            <strong>{innerBoxes.length.toString().padStart(2, '0')}</strong>
+            <span className="stat-icon" title="Boîtes intérieures" aria-hidden="true">
               <Boxes />
             </span>
-            <div>
-              <strong>{innerBoxes.length.toString().padStart(2, '0')}</strong>
-              <span>boîtes intérieures</span>
-            </div>
           </div>
-          <div>
-            <span className="stat-icon">
-              <Layers />
+          <div
+            aria-label={`${countItems(
+              [...boxes.map((b) => b.items), ...innerBoxes.map((b) => b.items)].join('\n'),
+            )} objets répertoriés`}
+          >
+            <strong>
+              {countItems(
+                [...boxes.map((b) => b.items), ...innerBoxes.map((b) => b.items)].join('\n'),
+              )
+                .toString()
+                .padStart(2, '0')}
+            </strong>
+            <span className="stat-icon" title="Objets répertoriés" aria-hidden="true">
+              <PackageOpen />
             </span>
-            <div>
-              <strong>
-                {countItems(
-                  [...boxes.map((b) => b.items), ...innerBoxes.map((b) => b.items)].join('\n'),
-                )
-                  .toString()
-                  .padStart(2, '0')}
-              </strong>
-              <span>objets répertoriés</span>
-            </div>
           </div>
-          <div>
-            <span className="stat-icon">
+          <div aria-label={`${moved.length + movedInnerBoxes.length} contenants déplacés`}>
+            <strong>{(moved.length + movedInnerBoxes.length).toString().padStart(2, '0')}</strong>
+            <span className="stat-icon" title="Contenants déplacés" aria-hidden="true">
               <MoveRight />
             </span>
-            <div>
-              <strong>{(moved.length + movedInnerBoxes.length).toString().padStart(2, '0')}</strong>
-              <span>contenants déplacés</span>
-            </div>
           </div>
           <aside>
             <span className="mini-label">UNE CAISSE EMPRUNTÉE ?</span>

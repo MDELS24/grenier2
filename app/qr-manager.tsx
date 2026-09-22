@@ -260,14 +260,16 @@ export default function QrManager({
   return (
     <>
       <button
-        className="secondary"
+        className="secondary menu-icon-button"
+        aria-label="QR codes"
+        title="QR codes"
         onClick={() => {
           setFixedKey(null);
           setError('');
           setOpen(true);
         }}
       >
-        <QrCode size={17} /> QR codes
+        <QrCode />
       </button>
       {open &&
         tab === 'make' &&

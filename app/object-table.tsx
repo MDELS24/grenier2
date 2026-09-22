@@ -118,8 +118,13 @@ export default function ObjectTable({
 
   return (
     <>
-      <button className="secondary" onClick={() => setOpen(true)}>
-        <ListTree size={17} /> Tableau des objets
+      <button
+        className="secondary menu-icon-button"
+        onClick={() => setOpen(true)}
+        aria-label="Tableau des objets"
+        title="Tableau des objets"
+      >
+        <ListTree />
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="crate-dialog table-dialog">

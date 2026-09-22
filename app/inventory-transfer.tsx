@@ -112,14 +112,16 @@ export default function InventoryTransfer({
   return (
     <>
       <button
-        className="secondary"
+        className="secondary menu-icon-button"
+        aria-label="Maintenance"
+        title="Maintenance"
         onClick={() => {
           setOpen(true);
           setError('');
           setSuccess('');
         }}
       >
-        <Settings size={17} /> Maintenance
+        <Settings />
       </button>
       <Dialog
         open={open}

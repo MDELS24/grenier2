@@ -152,8 +152,13 @@ export default function CrateTable({
   );
   return (
     <>
-      <button className="secondary" onClick={openTable}>
-        <ListChecks size={17} /> Tableau des caisses
+      <button
+        className="secondary menu-icon-button"
+        onClick={openTable}
+        aria-label="Tableau des caisses"
+        title="Tableau des caisses"
+      >
+        <ListChecks />
       </button>
       <Dialog open={open} onOpenChange={(value) => !busy && setOpen(value)}>
         <DialogContent className="crate-dialog table-dialog">

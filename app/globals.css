@@ -218,6 +218,9 @@ h1 {
   padding: 26px 24px;
   position: relative;
 }
+.stats > div .stat-icon {
+  flex: 0 0 auto;
+}
 .stats > div:not(:first-child):before {
   content: '';
   position: absolute;
@@ -238,11 +241,6 @@ h1 {
   font-size: 29px;
   font-weight: 500;
   letter-spacing: -1px;
-}
-.stats div div span {
-  font-size: 13px;
-  color: #79877f;
-  white-space: nowrap;
 }
 .stats aside {
   background: #edf3ee;
@@ -515,9 +513,17 @@ h2 span {
 }
 .crate-dialog {
   background: white !important;
+  width: min(32rem, calc(100vw - 32px));
+  max-width: calc(100vw - 32px) !important;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   border-radius: 14px !important;
+}
+.crate-dialog > * {
+  min-width: 0;
 }
 .crate-dialog form > label,
 .form-row > label {
@@ -527,7 +533,8 @@ h2 span {
   margin: 14px 0;
 }
 .crate-dialog input,
-.crate-dialog textarea {
+.crate-dialog textarea,
+.crate-dialog select {
   display: block;
   width: 100%;
   border: 1px solid #dbe3de;
@@ -538,6 +545,8 @@ h2 span {
   margin-top: 7px;
   background: white;
   outline-color: #709b84;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .crate-dialog textarea {
   resize: vertical;
@@ -565,6 +574,7 @@ h2 span {
 .form-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 15px;
   margin-top: 24px;
 }
@@ -792,15 +802,8 @@ h2 span {
     padding: 18px 8px;
     justify-content: center;
   }
-  .stat-icon {
-    display: none;
-  }
   .stats strong {
     font-size: 25px;
-  }
-  .stats div div span {
-    font-size: 11px;
-    white-space: normal;
   }
   .stats aside {
     padding: 15px;
@@ -829,7 +832,29 @@ h2 span {
     gap: 0;
   }
   .crate-dialog {
-    padding: 22px !important;
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px);
+    padding: 18px !important;
+    gap: 12px;
+  }
+  .crate-dialog [data-slot='dialog-title'] {
+    padding-right: 28px;
+    line-height: 1.25;
+  }
+  .crate-dialog .form-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+  .crate-dialog .form-actions > button {
+    min-width: 0;
+    min-height: 44px;
+    white-space: normal;
+  }
+  .crate-dialog .form-actions > .primary:last-child {
+    grid-column: 1 / -1;
   }
   .empty {
     padding: 35px 18px;
@@ -1399,6 +1424,31 @@ h2 span {
   gap: 0.75rem;
   margin: 1rem 0;
 }
+.menu-icon-button {
+  width: 46px;
+  height: 46px;
+  padding: 0 !important;
+  border-radius: 11px;
+}
+.menu-icon-button svg {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+}
+.menu-icon-button:focus-visible {
+  outline: 3px solid #8fbda6;
+  outline-offset: 2px;
+}
+.crate-table-wrap {
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-inline: contain;
+}
+.maintenance-actions button span,
+.maintenance-actions button small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .shelf-label {
   display: block;
   margin-top: 3px;
@@ -1536,6 +1586,27 @@ h2 span {
 @media (max-width: 500px) {
   .csv-mapping {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 420px) {
+  .inventory-actions {
+    gap: 8px;
+  }
+  .menu-icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  .bulk-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .bulk-toolbar > *,
+  .bulk-toolbar > span,
+  .bulk-toolbar label {
+    grid-column: 1;
+    min-width: 0;
+  }
+  .bulk-toolbar button {
+    width: 100%;
   }
 }
 
