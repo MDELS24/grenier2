@@ -2,8 +2,10 @@ import InventoryTransfer from './inventory-transfer';
 import CategoryManager from './category-manager';
 import QrManager from './qr-manager';
 import CrateTable from './crate-table';
+import InnerBoxManager, { type InnerBoxRequest } from './inner-box-manager';
+import ObjectTable from './object-table';
 import { appendContents, takePendingQr } from '@/lib/qr';
-import { listCrates, mutateCrate, CrateError, listCategories } from '@/lib/api';
+import { listCrates, mutateCrate, CrateError, listCategories, listInnerBoxes } from '@/lib/api';
 ('use client');
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -21,6 +23,7 @@ import {
   Clock3,
   RefreshCw,
   ListChecks,
+  Boxes,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
@@ -61,8 +64,16 @@ import {
   due,
   searchCrates,
   formatDate,
+  shelfLabel,
   type Crate,
 } from '@/lib/crates';
+import {
+  currentCrateId,
+  innerBoxCode,
+  innerBoxIsMoved,
+  searchInnerBoxes,
+  type InnerBox,
+} from '@/lib/inner-boxes';
 
 type Movement = { box: Crate; destination: string; return_date: string; move_note: string };
 type Status = 'all' | 'moved' | 'due';
@@ -83,14 +94,19 @@ function ReturnDate({ box, today }: { box: Crate; today: string }) {
 export default function Home() {
   const [categories, setCategories] = useState(defaultCategories);
   const [qrCrate, setQrCrate] = useState<Crate | null>(null);
+  const [qrInnerBox, setQrInnerBox] = useState<InnerBox | null>(null);
   const [tableRequest, setTableRequest] = useState(0);
+  const [innerBoxRequest, setInnerBoxRequest] = useState<InnerBoxRequest>();
+  const innerBoxRequestToken = useRef(0);
   const [boxes, setBoxes] = useState<Crate[]>([]),
+    [innerBoxes, setInnerBoxes] = useState<InnerBox[]>([]),
     [loading, setLoading] = useState(true),
     [loadError, setLoadError] = useState(''),
     [formError, setFormError] = useState('');
   const [query, setQuery] = useState(''),
     [category, setCategory] = useState('Toutes'),
     [location, setLocation] = useState('Tous'),
+    [shelf, setShelf] = useState('Toutes'),
     [locationMode, setLocationMode] = useState('current'),
     [status, setStatus] = useState<Status>('all');
   const [draft, setDraft] = useState<Crate>(emptyCrate),
@@ -109,10 +125,15 @@ export default function Home() {
     const request = ++sequence.current;
     if (showLoading) setLoading(true);
     try {
-      const [data, categoryRows] = await Promise.all([listCrates(), listCategories()]);
+      const [data, categoryRows, innerBoxRows] = await Promise.all([
+        listCrates(),
+        listCategories(),
+        listInnerBoxes(),
+      ]);
       if (request === sequence.current) {
         setBoxes(data);
         setCategories(categoryRows.map((c) => c.name));
+        setInnerBoxes(innerBoxRows);
         setLoadError('');
       }
     } catch {
@@ -150,9 +171,29 @@ export default function Home() {
     } catch {
       /* Stockage optionnel. */
     }
-    const id = params.get('caisse') || pending?.id;
+    const kind = params.has('boite') ? 'box' : params.has('caisse') ? 'crate' : pending?.kind;
+    const id = params.get(kind === 'box' ? 'boite' : 'caisse') || pending?.id;
     if (!id) return;
     handledQrLink.current = true;
+    if (kind === 'box') {
+      const target = innerBoxes.find((box) => box.id === id);
+      if (!target) toast.error('Cette boîte n’existe plus ou n’est pas accessible.');
+      else
+        setInnerBoxRequest({
+          token: ++innerBoxRequestToken.current,
+          id: target.id,
+        });
+      params.delete('boite');
+      params.delete('action');
+      history.replaceState(
+        null,
+        '',
+        window.location.pathname +
+          (params.size ? '?' + params.toString() : '') +
+          window.location.hash,
+      );
+      return;
+    }
     const target = boxes.find((box) => box.id === id);
     if (!target) {
       toast.error('Cette caisse n’existe plus ou n’est pas accessible.');
@@ -169,7 +210,7 @@ export default function Home() {
         window.location.hash,
     );
     edit(target, add);
-  }, [boxes, loading, loadError]);
+  }, [boxes, innerBoxes, loading, loadError]);
   useEffect(() => {
     const context = (
       document as Document & {
@@ -217,20 +258,35 @@ export default function Home() {
   }, [boxes]);
   const homes = [...new Set(boxes.map((b) => b.location))].sort();
   const places = [...new Set(boxes.flatMap((b) => [b.location, currentLocation(b)]))].sort();
+  const shelves = [...new Set(boxes.map((b) => b.shelf?.trim()).filter(Boolean) as string[])].sort(
+    (a, b) => a.localeCompare(b, 'fr', { numeric: true, sensitivity: 'base' }),
+  );
   const moved = boxes.filter((b) => b.temporary_location),
     toReturn = boxes.filter((b) => due(b, today));
-  const filtered = searchCrates(boxes, query).filter(
+  const movedInnerBoxes = innerBoxes.filter(innerBoxIsMoved);
+  const matchingInnerCrateIds = new Set(
+    searchInnerBoxes(innerBoxes, boxes, query).flatMap(
+      (box) => [box.home_crate_id, currentCrateId(box)].filter(Boolean) as string[],
+    ),
+  );
+  const filtered = boxes.filter(
     (b) =>
+      (searchCrates([b], query).length > 0 || matchingInnerCrateIds.has(b.id)) &&
       (category === 'Toutes' || b.category === category) &&
       (location === 'Tous' ||
         (locationMode === 'current' ? currentLocation(b) : b.location) === location) &&
+      (shelf === 'Toutes' || b.shelf === shelf) &&
       (status === 'all' || (status === 'moved' ? !!b.temporary_location : due(b, today))),
   );
   function clearFilters() {
     setQuery('');
     setCategory('Toutes');
     setLocation('Tous');
+    setShelf('Toutes');
     setStatus('all');
+  }
+  function requestInnerBox(id?: string, homeCrateId?: string) {
+    setInnerBoxRequest({ token: ++innerBoxRequestToken.current, id, homeCrateId });
   }
   /** Remplace une fiche par la version confirmée par PostgreSQL. */
   function applyRow(row: Crate) {
@@ -402,7 +458,7 @@ export default function Home() {
             <Plus size={19} /> Nouvelle caisse
           </button>
         </div>
-        <section className="stats" aria-label="Résumé de votre rangement">
+        <section className="stats has-boxes" aria-label="Résumé de votre rangement">
           <div>
             <span className="stat-icon">
               <Box />
@@ -414,11 +470,22 @@ export default function Home() {
           </div>
           <div>
             <span className="stat-icon">
+              <Boxes />
+            </span>
+            <div>
+              <strong>{innerBoxes.length.toString().padStart(2, '0')}</strong>
+              <span>boîtes intérieures</span>
+            </div>
+          </div>
+          <div>
+            <span className="stat-icon">
               <Layers />
             </span>
             <div>
               <strong>
-                {countItems(boxes.map((b) => b.items).join('\n'))
+                {countItems(
+                  [...boxes.map((b) => b.items), ...innerBoxes.map((b) => b.items)].join('\n'),
+                )
                   .toString()
                   .padStart(2, '0')}
               </strong>
@@ -430,8 +497,8 @@ export default function Home() {
               <MoveRight />
             </span>
             <div>
-              <strong>{moved.length.toString().padStart(2, '0')}</strong>
-              <span>caisses déplacées</span>
+              <strong>{(moved.length + movedInnerBoxes.length).toString().padStart(2, '0')}</strong>
+              <span>contenants déplacés</span>
             </div>
           </div>
           <aside>
@@ -447,9 +514,23 @@ export default function Home() {
           <InventoryTransfer boxes={boxes} onChange={() => void refresh()} />
           <CrateTable
             boxes={boxes}
+            innerBoxes={innerBoxes}
             onChange={() => void refresh()}
             onOpen={edit}
             openRequest={tableRequest}
+          />
+          <InnerBoxManager
+            crates={boxes}
+            innerBoxes={innerBoxes}
+            onChange={() => void refresh()}
+            request={innerBoxRequest}
+            onPrintQr={(box) => setQrInnerBox({ ...box })}
+          />
+          <ObjectTable
+            crates={boxes}
+            innerBoxes={innerBoxes}
+            onOpenCrate={edit}
+            onOpenInnerBox={(box) => requestInnerBox(box.id)}
           />
           <CategoryManager
             onChange={() => {
@@ -457,7 +538,14 @@ export default function Home() {
               void refresh();
             }}
           />
-          <QrManager boxes={boxes} onOpen={edit} requestedCrate={qrCrate} />
+          <QrManager
+            boxes={boxes}
+            innerBoxes={innerBoxes}
+            onOpen={edit}
+            onOpenInnerBox={(box) => requestInnerBox(box.id)}
+            requestedCrate={qrCrate}
+            requestedInnerBox={qrInnerBox}
+          />
         </div>
         <section className="inventory">
           <div className="section-heading">
@@ -541,6 +629,20 @@ export default function Home() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={shelf} onValueChange={setShelf}>
+              <SelectTrigger aria-label="Filtrer par étagère" className="location-select">
+                <Layers size={17} />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Toutes">Toutes les étagères</SelectItem>
+                {shelves.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="filters" aria-label="Catégories">
             {['Toutes', ...categories].map((c) => (
@@ -599,7 +701,25 @@ export default function Home() {
                       <div>
                         <span className="where-label">Place habituelle</span>
                         <span>{b.location}</span>
+                        {shelfLabel(b) && <small className="shelf-label">{shelfLabel(b)}</small>}
                       </div>
+                    </div>
+                  </div>
+                  <div className="inner-box-summary">
+                    <strong>
+                      <Boxes size={15} /> Boîtes à l’intérieur
+                    </strong>
+                    <div>
+                      {innerBoxes
+                        .filter((innerBox) => currentCrateId(innerBox) === b.id)
+                        .map((innerBox) => (
+                          <button key={innerBox.id} onClick={() => requestInnerBox(innerBox.id)}>
+                            {innerBoxCode(innerBox)} · {innerBox.name}
+                          </button>
+                        ))}
+                      {!innerBoxes.some((innerBox) => currentCrateId(innerBox) === b.id) && (
+                        <span>Aucune boîte</span>
+                      )}
                     </div>
                   </div>
                   {b.temporary_location ? (
@@ -739,6 +859,67 @@ export default function Home() {
               </div>
             </div>
           )}
+          {draft.id && (
+            <section className="crate-inner-boxes" aria-label="Boîtes de cette caisse">
+              <div className="crate-inner-boxes-heading">
+                <div>
+                  <strong>Boîtes à l’intérieur</strong>
+                  <span>
+                    {innerBoxes.filter((box) => currentCrateId(box) === draft.id).length} boîte(s)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setOpen(false);
+                    requestInnerBox(undefined, draft.id);
+                  }}
+                >
+                  <Plus size={15} /> Ajouter une boîte
+                </button>
+              </div>
+              <div className="crate-inner-box-list">
+                {innerBoxes
+                  .filter((box) => currentCrateId(box) === draft.id)
+                  .map((box) => (
+                    <button
+                      type="button"
+                      key={box.id}
+                      onClick={() => {
+                        setOpen(false);
+                        requestInnerBox(box.id);
+                      }}
+                    >
+                      <Boxes size={16} />
+                      <span>
+                        <strong>{innerBoxCode(box)}</strong>
+                        <small>
+                          {box.name} · {countItems(box.items)} objet(s)
+                        </small>
+                      </span>
+                      <ArrowUpRight size={15} />
+                    </button>
+                  ))}
+                {!innerBoxes.some((box) => currentCrateId(box) === draft.id) && (
+                  <p>Aucune boîte ne se trouve actuellement dans cette caisse.</p>
+                )}
+              </div>
+              {innerBoxes.some(
+                (box) => box.home_crate_id === draft.id && currentCrateId(box) !== draft.id,
+              ) && (
+                <p className="field-help">
+                  Boîtes habituelles actuellement déplacées :{' '}
+                  {innerBoxes
+                    .filter(
+                      (box) => box.home_crate_id === draft.id && currentCrateId(box) !== draft.id,
+                    )
+                    .map((box) => innerBoxCode(box))
+                    .join(', ')}
+                </p>
+              )}
+            </section>
+          )}
           <form onSubmit={save}>
             <label>
               Repère / numéro de caisse
@@ -800,6 +981,29 @@ export default function Home() {
                 </Select>
               </label>
             </div>
+            <div className="form-row shelf-fields">
+              <label>
+                Étagère <span className="muted">— facultatif</span>
+                <input
+                  maxLength={100}
+                  value={draft.shelf || ''}
+                  onChange={(e) => setDraft({ ...draft, shelf: e.target.value })}
+                  placeholder="Ex. Étagère A"
+                />
+              </label>
+              <label>
+                Niveau / position <span className="muted">— facultatif</span>
+                <input
+                  maxLength={100}
+                  value={draft.shelf_position || ''}
+                  onChange={(e) => setDraft({ ...draft, shelf_position: e.target.value })}
+                  placeholder="Ex. Niveau 2 · gauche"
+                />
+              </label>
+            </div>
+            <p className="field-help">
+              Ces repères permettent de retrouver la caisse rapidement sur une étagère.
+            </p>
             <p className="field-help">
               Pour un changement provisoire, utilisez « Déplacer temporairement » : cette place
               reste votre point de retour.
@@ -1069,7 +1273,8 @@ export default function Home() {
         <AlertDialogContent>
           <AlertDialogTitle>Supprimer cette caisse ?</AlertDialogTitle>
           <AlertDialogDescription>
-            La fiche « {draft.name} » et sa liste d’objets seront supprimées.
+            La fiche « {draft.name} » et sa liste d’objets seront supprimées. Une caisse contenant
+            des boîtes doit d’abord être vidée.
           </AlertDialogDescription>
           {formError && (
             <p role="alert" className="error">

@@ -11,18 +11,29 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { mutateCrate } from '@/lib/api';
-import { countItems, crateCode, currentLocation, type Crate } from '@/lib/crates';
+import {
+  countItems,
+  crateCode,
+  currentLocation,
+  formatDate,
+  shelfLabel,
+  type Crate,
+} from '@/lib/crates';
+import { currentCrateId, innerBoxCode, type InnerBox } from '@/lib/inner-boxes';
 
-type SortKey = 'code' | 'name' | 'category' | 'home' | 'current' | 'items';
+type SortKey =
+  'code' | 'name' | 'category' | 'home' | 'shelf' | 'current' | 'boxes' | 'items' | 'created';
 
 /** Vue compacte pour trier l'inventaire et appliquer une action à plusieurs caisses. */
 export default function CrateTable({
   boxes,
+  innerBoxes,
   onChange,
   onOpen,
   openRequest = 0,
 }: {
   boxes: Crate[];
+  innerBoxes: InnerBox[];
   onChange: () => void;
   onOpen: (box: Crate) => void;
   openRequest?: number;
@@ -49,7 +60,11 @@ export default function CrateTable({
       if (sort === 'code') return crateCode(box);
       if (sort === 'home') return box.location;
       if (sort === 'current') return currentLocation(box);
+      if (sort === 'shelf') return shelfLabel(box);
+      if (sort === 'boxes')
+        return innerBoxes.filter((innerBox) => currentCrateId(innerBox) === box.id).length;
       if (sort === 'items') return countItems(box.items);
+      if (sort === 'created') return box.created_at || '';
       return box[sort];
     };
     return [...boxes].sort((a, b) => {
@@ -61,7 +76,7 @@ export default function CrateTable({
           : String(left).localeCompare(String(right), 'fr', { numeric: true, sensitivity: 'base' });
       return ascending ? comparison : -comparison;
     });
-  }, [boxes, sort, ascending]);
+  }, [boxes, innerBoxes, sort, ascending]);
 
   function toggleSort(key: SortKey) {
     if (sort === key) setAscending((value) => !value);
@@ -206,8 +221,11 @@ export default function CrateTable({
                   <th>{heading('name', 'Nom')}</th>
                   <th>{heading('category', 'Catégorie')}</th>
                   <th>{heading('home', 'Place habituelle')}</th>
+                  <th>{heading('shelf', 'Étagère')}</th>
                   <th>{heading('current', 'Emplacement actuel')}</th>
+                  <th>{heading('boxes', 'Boîtes')}</th>
                   <th>{heading('items', 'Objets')}</th>
+                  <th>{heading('created', 'Créée le')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -240,11 +258,23 @@ export default function CrateTable({
                     <td>{box.name}</td>
                     <td>{box.category}</td>
                     <td>{box.location}</td>
+                    <td>{shelfLabel(box) || '—'}</td>
                     <td>
                       {currentLocation(box)}
                       {box.temporary_location && <span className="table-badge">temporaire</span>}
                     </td>
+                    <td className="inner-boxes-cell">
+                      {innerBoxes
+                        .filter((innerBox) => currentCrateId(innerBox) === box.id)
+                        .map((innerBox) => (
+                          <span key={innerBox.id} title={innerBox.name}>
+                            {innerBoxCode(innerBox)}
+                          </span>
+                        ))}
+                      {!innerBoxes.some((innerBox) => currentCrateId(innerBox) === box.id) && '—'}
+                    </td>
                     <td>{countItems(box.items)}</td>
+                    <td>{box.created_at ? formatDate(box.created_at) : '—'}</td>
                   </tr>
                 ))}
               </tbody>

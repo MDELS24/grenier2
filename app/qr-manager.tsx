@@ -4,19 +4,37 @@ import type { IScannerControls } from '@zxing/browser';
 import { Camera, Printer, QrCode, ScanLine } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { crateCode, type Crate } from '@/lib/crates';
-import { crateQrValue, resolveQrValue, type QrAction } from '@/lib/qr';
+import { innerBoxCode, type InnerBox } from '@/lib/inner-boxes';
+import { crateQrValue, innerBoxQrValue, resolveInventoryQrValue, type QrAction } from '@/lib/qr';
 
 type Props = {
   boxes: Crate[];
+  innerBoxes: InnerBox[];
   onOpen: (box: Crate, addContent: boolean) => void;
+  onOpenInnerBox: (box: InnerBox) => void;
   requestedCrate?: Crate | null;
+  requestedInnerBox?: InnerBox | null;
 };
-type Label = { id: string; code: string; name: string; svg: string; value: string };
-const captions = { view: 'Voir le contenu', add: 'Ajouter du contenu', code: 'Numéro de caisse' };
+type Label = {
+  kind: 'crate' | 'box';
+  id: string;
+  code: string;
+  name: string;
+  svg: string;
+  value: string;
+};
+const captions = { view: 'Voir le contenu', add: 'Ajouter du contenu', code: 'Afficher le repère' };
 
 /** Les étiquettes SVG et les trames de caméra restent uniquement en mémoire. */
-export default function QrManager({ boxes, onOpen, requestedCrate }: Props) {
-  const [fixedId, setFixedId] = useState<string | null>(null);
+export default function QrManager({
+  boxes,
+  innerBoxes,
+  onOpen,
+  onOpenInnerBox,
+  requestedCrate,
+  requestedInnerBox,
+}: Props) {
+  const [fixedKey, setFixedKey] = useState<string | null>(null);
   const [open, setOpen] = useState(false),
     [tab, setTab] = useState<'make' | 'scan'>('make');
   const [selected, setSelected] = useState(''),
@@ -33,44 +51,82 @@ export default function QrManager({ boxes, onOpen, requestedCrate }: Props) {
     controls = useRef<IScannerControls | null>(null);
   const stream = useRef<MediaStream | null>(null),
     cameraRun = useRef(0);
-  const selectedBoxes = useMemo(
-    () => boxes.filter((b) => (fixedId ? b.id === fixedId : selected === '*' || b.id === selected)),
-    [boxes, selected, fixedId],
+  const entities = useMemo(
+    () => [
+      ...boxes.map((box) => ({ kind: 'crate' as const, box, key: `crate:${box.id}` })),
+      ...innerBoxes.map((box) => ({ kind: 'box' as const, box, key: `box:${box.id}` })),
+    ],
+    [boxes, innerBoxes],
+  );
+  const selectedEntities = useMemo(
+    () =>
+      entities.filter((entity) =>
+        fixedKey ? entity.key === fixedKey : selected === '*' || entity.key === selected,
+      ),
+    [entities, selected, fixedKey],
   );
   // Le détail impose l’identifiant enregistré : aucune autre caisse ne peut être imprimée.
   useEffect(() => {
     if (!requestedCrate) return;
-    setFixedId(requestedCrate.id);
-    setSelected(requestedCrate.id);
+    const key = `crate:${requestedCrate.id}`;
+    setFixedKey(key);
+    setSelected(key);
     setTab('make');
     setAction('view');
     setCopies(1);
     setOpen(true);
   }, [requestedCrate]);
+  useEffect(() => {
+    if (!requestedInnerBox) return;
+    const key = `box:${requestedInnerBox.id}`;
+    setFixedKey(key);
+    setSelected(key);
+    setTab('make');
+    setAction('view');
+    setCopies(1);
+    setOpen(true);
+  }, [requestedInnerBox]);
   // Empêche une réponse asynchrone ancienne de changer l’étiquette.
   const labelInput = JSON.stringify(
-    selectedBoxes.map((b) => ({ id: b.id, code: crateCode(b), name: b.name })),
+    selectedEntities.map((entity) => ({
+      kind: entity.kind,
+      id: entity.box.id,
+      code:
+        entity.kind === 'crate'
+          ? crateCode(entity.box as Crate)
+          : innerBoxCode(entity.box as InnerBox),
+      name: entity.box.name,
+    })),
   );
   const [renderedKey, setRenderedKey] = useState('');
   const labelKey = action + labelInput;
   const ready = labels.length > 0 && renderedKey === labelKey;
   useEffect(() => {
-    if (selected !== '*' && !boxes.some((b) => b.id === selected)) setSelected(boxes[0]?.id || '');
-  }, [boxes, selected]);
+    if (selected !== '*' && !entities.some((entity) => entity.key === selected))
+      setSelected(entities[0]?.key || '');
+  }, [entities, selected]);
   useEffect(() => {
     if (!open || tab !== 'make') return;
     let cancelled = false;
     setGenerationError('');
-    const data = JSON.parse(labelInput) as { id: string; code: string; name: string }[];
+    const data = JSON.parse(labelInput) as {
+      kind: 'crate' | 'box';
+      id: string;
+      code: string;
+      name: string;
+    }[];
     void import('qrcode')
       .then(async ({ default: QRCode }) => {
         const result = await Promise.all(
           data.map(async (b) => {
-            const value = crateQrValue(
-              b as Crate,
-              action,
-              new URL(import.meta.env.BASE_URL, location.origin).href,
-            );
+            const value =
+              b.kind === 'crate'
+                ? crateQrValue(b, action, new URL(import.meta.env.BASE_URL, location.origin).href)
+                : innerBoxQrValue(
+                    b,
+                    action,
+                    new URL(import.meta.env.BASE_URL, location.origin).href,
+                  );
             return {
               ...b,
               value,
@@ -124,15 +180,16 @@ export default function QrManager({ boxes, onOpen, requestedCrate }: Props) {
   }, [stopCamera]);
 
   function useValue(raw: string) {
-    const resolved = resolveQrValue(raw, boxes, location.origin);
+    const resolved = resolveInventoryQrValue(raw, boxes, innerBoxes, location.origin);
     if (!resolved) {
-      setError('Aucune caisse ne correspond à ce QR ou à ce repère.');
+      setError('Aucune caisse ni boîte ne correspond à ce QR ou à ce repère.');
       return;
     }
     stopCamera();
     setOpen(false);
     setError('');
-    onOpen(resolved.box, resolved.action === 'add');
+    if (resolved.kind === 'crate') onOpen(resolved.box, resolved.action === 'add');
+    else onOpenInnerBox(resolved.box);
   }
   async function startCamera() {
     stopCamera();
@@ -194,7 +251,9 @@ export default function QrManager({ boxes, onOpen, requestedCrate }: Props) {
       <div className="qr-image" dangerouslySetInnerHTML={{ __html: item.svg }} />
       <strong>{item.code}</strong>
       <span>{item.name}</span>
-      <small>{captions[action]}</small>
+      <small>
+        {item.kind === 'crate' ? 'CAISSE' : 'BOÎTE'} · {captions[action]}
+      </small>
     </section>
   );
 
@@ -203,7 +262,7 @@ export default function QrManager({ boxes, onOpen, requestedCrate }: Props) {
       <button
         className="secondary"
         onClick={() => {
-          setFixedId(null);
+          setFixedKey(null);
           setError('');
           setOpen(true);
         }}
@@ -229,12 +288,12 @@ export default function QrManager({ boxes, onOpen, requestedCrate }: Props) {
         }}
       >
         <DialogContent className="crate-dialog qr-dialog">
-          <DialogTitle>QR codes des caisses</DialogTitle>
+          <DialogTitle>QR codes des caisses et boîtes</DialogTitle>
           <DialogDescription>
-            Imprimez vos étiquettes ou retrouvez une caisse avec la caméra. Aucune image n’est
+            Imprimez vos étiquettes ou retrouvez un contenant avec la caméra. Aucune image n’est
             enregistrée ni envoyée.
           </DialogDescription>
-          <div className="qr-tabs" hidden={!!fixedId}>
+          <div className="qr-tabs" hidden={!!fixedKey}>
             <button
               aria-pressed={tab === 'make'}
               className={tab === 'make' ? 'active' : ''}
@@ -255,21 +314,25 @@ export default function QrManager({ boxes, onOpen, requestedCrate }: Props) {
           </div>
           {tab === 'make' ? (
             <div className="qr-maker">
-              {!boxes.length ? (
-                <p>Ajoutez une caisse pour produire son étiquette.</p>
+              {!entities.length ? (
+                <p>Ajoutez une caisse ou une boîte pour produire son étiquette.</p>
               ) : (
                 <>
                   <label>
-                    Caisse à encoder
+                    Caisse ou boîte à encoder
                     <select
-                      value={fixedId || selected}
-                      disabled={!!fixedId}
+                      value={fixedKey || selected}
+                      disabled={!!fixedKey}
                       onChange={(e) => setSelected(e.target.value)}
                     >
-                      {!fixedId && <option value="*">Toutes les caisses ({boxes.length})</option>}
-                      {(fixedId ? selectedBoxes : boxes).map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {crateCode(b)} · {b.name}
+                      {!fixedKey && <option value="*">Tout imprimer ({entities.length})</option>}
+                      {(fixedKey ? selectedEntities : entities).map((entity) => (
+                        <option key={entity.key} value={entity.key}>
+                          {entity.kind === 'crate' ? 'Caisse' : 'Boîte'} ·{' '}
+                          {entity.kind === 'crate'
+                            ? crateCode(entity.box as Crate)
+                            : innerBoxCode(entity.box as InnerBox)}{' '}
+                          · {entity.box.name}
                         </option>
                       ))}
                     </select>
@@ -280,7 +343,7 @@ export default function QrManager({ boxes, onOpen, requestedCrate }: Props) {
                       [
                         ['view', 'Ouvrir la fiche et voir le contenu'],
                         ['add', 'Ouvrir pour ajouter du contenu'],
-                        ['code', 'Afficher simplement le numéro de caisse'],
+                        ['code', 'Afficher simplement le numéro'],
                       ] as const
                     ).map(([key, text]) => (
                       <label key={key}>
@@ -296,7 +359,7 @@ export default function QrManager({ boxes, onOpen, requestedCrate }: Props) {
                   </fieldset>
                   <p className="field-help">
                     {action === 'code'
-                      ? 'Contient seulement le repère actuel. Après un renommage, réimprimez cette étiquette. Le lecteur Grenier2 retrouve la caisse à partir de ce repère.'
+                      ? 'Contient seulement le repère actuel. Après un renommage, réimprimez cette étiquette. Le lecteur Grenier2 retrouve le contenant à partir de ce repère.'
                       : 'Ouvrable avec la caméra du téléphone ou le lecteur ci-dessous. La connexion reste nécessaire. Le lien continue à fonctionner si le repère change.'}
                   </p>
                   <label>
