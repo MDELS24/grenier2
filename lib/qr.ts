@@ -1,9 +1,10 @@
 import type { Crate } from './crates.ts';
+import type { InnerBox } from './inner-boxes.ts';
 
 export type QrAction = 'view' | 'add' | 'code';
 
 /** Construit un lien stable vers la caisse à partir de son identifiant interne. */
-export function crateQrValue(box: Crate, action: QrAction, baseUrl: string) {
+export function crateQrValue(box: Pick<Crate, 'id' | 'code'>, action: QrAction, baseUrl: string) {
   if (action === 'code') return box.code || box.id;
   const url = new URL(baseUrl);
   url.hash = '';
@@ -13,15 +14,36 @@ export function crateQrValue(box: Crate, action: QrAction, baseUrl: string) {
   return url.href;
 }
 
+/** Construit un lien stable vers une boîte intérieure. */
+export function innerBoxQrValue(
+  box: Pick<InnerBox, 'id' | 'code'>,
+  action: QrAction,
+  baseUrl: string,
+) {
+  if (action === 'code') return box.code || box.id;
+  const url = new URL(baseUrl);
+  url.hash = '';
+  url.search = '';
+  url.searchParams.set('boite', box.id);
+  url.searchParams.set('action', action);
+  return url.href;
+}
+
 export const pendingQrKey = 'grenier2-pending-qr';
 /** Garde uniquement la destination du scan durant la connexion, jamais une image. */
 export function rememberQr(search: string, storage: Pick<Storage, 'setItem'>, now = Date.now()) {
   const params = new URLSearchParams(search);
-  const id = params.get('caisse');
+  const kind = params.has('boite') ? 'box' : 'crate';
+  const id = params.get(kind === 'box' ? 'boite' : 'caisse');
   if (!id || id.length > 100) return;
   storage.setItem(
     pendingQrKey,
-    JSON.stringify({ id, action: params.get('action') === 'add' ? 'add' : 'view', at: now }),
+    JSON.stringify({
+      kind,
+      id,
+      action: params.get('action') === 'add' ? 'add' : 'view',
+      at: now,
+    }),
   );
 }
 
@@ -37,12 +59,16 @@ export function takePendingQr(storage: Pick<Storage, 'getItem' | 'removeItem'>, 
       !value.id ||
       value.id.length > 100 ||
       !['view', 'add'].includes(value.action) ||
+      !['crate', 'box'].includes(value.kind || 'crate') ||
       typeof value.at !== 'number' ||
       now - value.at < 0 ||
       now - value.at > 3600000
     )
       return null;
-    return value as { id: string; action: 'view' | 'add'; at: number };
+    return {
+      ...value,
+      kind: value.kind === 'box' ? 'box' : 'crate',
+    } as { kind: 'crate' | 'box'; id: string; action: 'view' | 'add'; at: number };
   } catch {
     return null;
   }
@@ -76,4 +102,36 @@ export function resolveQrValue(value: string, boxes: Crate[], origin: string) {
       (candidate.code || candidate.id).toLocaleLowerCase() === input.toLocaleLowerCase(),
   );
   return box ? { box, action: 'view' as const } : null;
+}
+
+/** Résout aussi bien une caisse G qu'une boîte B, par lien stable ou par repère. */
+export function resolveInventoryQrValue(
+  value: string,
+  crates: Crate[],
+  innerBoxes: InnerBox[],
+  origin: string,
+) {
+  const input = value.trim();
+  if (!input) return null;
+  try {
+    const url = new URL(input);
+    if (url.origin === origin && url.searchParams.has('boite')) {
+      const box = innerBoxes.find((candidate) => candidate.id === url.searchParams.get('boite'));
+      return box
+        ? {
+            kind: 'box' as const,
+            box,
+            action: url.searchParams.get('action') === 'add' ? ('add' as const) : ('view' as const),
+          }
+        : null;
+    }
+  } catch {
+    // La recherche par repère continue.
+  }
+  const crateResult = resolveQrValue(input, crates, origin);
+  if (crateResult) return { kind: 'crate' as const, ...crateResult };
+  const box = innerBoxes.find(
+    (candidate) => (candidate.code || candidate.id).toLowerCase() === input.toLowerCase(),
+  );
+  return box ? { kind: 'box' as const, box, action: 'view' as const } : null;
 }

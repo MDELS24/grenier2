@@ -23,6 +23,9 @@ export type Crate = {
   return_date: string | null;
   move_note: string;
   revision: number;
+  created_at?: string;
+  shelf?: string;
+  shelf_position?: string;
 };
 export const emptyCrate: Crate = {
   id: '',
@@ -37,6 +40,8 @@ export const emptyCrate: Crate = {
   return_date: null,
   move_note: '',
   revision: 0,
+  shelf: '',
+  shelf_position: '',
 };
 export const normalize = (s: string) =>
   s
@@ -71,9 +76,18 @@ export const due = (b: Crate, today = localDate()) =>
 export const searchCrates = (boxes: Crate[], query: string) =>
   boxes.filter((b) =>
     normalize(
-      [b.code, b.id, b.name, b.items, b.location, b.temporary_location, b.notes, b.move_note].join(
-        ' ',
-      ),
+      [
+        b.code,
+        b.id,
+        b.name,
+        b.items,
+        b.location,
+        b.temporary_location,
+        b.shelf,
+        b.shelf_position,
+        b.notes,
+        b.move_note,
+      ].join(' '),
     ).includes(normalize(query)),
   );
 export function formatDate(value: string) {
@@ -86,3 +100,7 @@ export function formatDate(value: string) {
 
 /** Conserve l’affichage des anciennes fiches pendant une migration progressive. */
 export const crateCode = (box: Crate) => box.code || box.id;
+
+/** Libellé court de rangement dans une étagère. */
+export const shelfLabel = (box: Crate) =>
+  [box.shelf, box.shelf_position].filter((value) => value?.trim()).join(' · ');

@@ -1,5 +1,6 @@
 import { client } from './supabase';
 import type { Crate } from './crates';
+import type { InnerBox } from './inner-boxes';
 /** Erreur applicative ; le statut 409 indique une révision devenue obsolète. */
 export class CrateError extends Error {
   constructor(
@@ -36,4 +37,21 @@ export async function listCategories(): Promise<InventoryCategory[]> {
 export async function manageCategory(action: 'add' | 'delete', name: string) {
   const { error } = await client().rpc('manage_category', { action, category_name: name });
   if (error) throw Error(error.message);
+}
+
+/** Lit les boîtes accessibles ; les caisses associées restent filtrées par RLS. */
+export async function listInnerBoxes(): Promise<InnerBox[]> {
+  const { data, error } = await client()
+    .from('inner_boxes')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as InnerBox[];
+}
+
+/** Écrit une boîte par la fonction transactionnelle prévue à cet effet. */
+export async function mutateInnerBox(operation: string, payload: unknown): Promise<InnerBox> {
+  const { data, error } = await client().rpc('mutate_inner_box', { operation, payload });
+  if (error) throw new CrateError(error.message, error.code === '40001' ? 409 : 400);
+  return data as InnerBox;
 }
