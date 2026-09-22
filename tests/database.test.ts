@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { currentLocation, due, searchCrates, type Crate } from '../lib/crates.ts';
+import { currentCrateId, innerBoxCurrentLocation, type InnerBox } from '../lib/inner-boxes.ts';
 test('Postgres: inventory, movements, conflicts and access control', async () => {
   const db = new PGlite();
   try {
@@ -22,6 +23,7 @@ test('Postgres: inventory, movements, conflicts and access control', async () =>
     for (const migration of [
       '202609150001_inventory_options.sql',
       '202609150002_inventory_import.sql',
+      '202609220001_storage_hierarchy.sql',
     ])
       await db.exec(
         await readFile(new URL('../supabase/migrations/' + migration, import.meta.url), 'utf8'),
@@ -34,6 +36,13 @@ test('Postgres: inventory, movements, conflicts and access control', async () =>
     const mutate = async (operation: string, payload: unknown) => {
       const r = await db.query<{ result: Crate }>(
         'select public.mutate_crate($1,$2::jsonb) as result',
+        [operation, JSON.stringify(payload)],
+      );
+      return r.rows[0].result;
+    };
+    const mutateInner = async (operation: string, payload: unknown) => {
+      const r = await db.query<{ result: InnerBox }>(
+        'select public.mutate_inner_box($1,$2::jsonb) as result',
         [operation, JSON.stringify(payload)],
       );
       return r.rows[0].result;
@@ -123,6 +132,51 @@ test('Postgres: inventory, movements, conflicts and access control', async () =>
     await assert.rejects(mutate('POST', { ...base, code: 'boîte noël' }), /déjà utilisé/);
     const auto = await mutate('POST', base);
     assert.match(auto.code!, /^G-\d{6,}$/);
+    let inner = await mutateInner('POST', {
+      code: '',
+      name: 'Visserie M3',
+      home_crate_id: custom.id,
+      items: 'Vis M3\nÉcrous M3',
+      notes: '',
+    });
+    assert.match(inner.code, /^B-\d{6,}$/);
+    assert.equal(currentCrateId(inner), custom.id);
+    assert.match(innerBoxCurrentLocation(inner, [custom, auto]), /Boîte Noël/);
+    inner = await mutateInner('PATCH', {
+      id: inner.id,
+      revision: inner.revision,
+      action: 'move_crate',
+      destination_crate_id: auto.id,
+      return_date: '2026-10-01',
+      move_note: 'Projet',
+    });
+    assert.equal(currentCrateId(inner), auto.id);
+    assert.equal(inner.home_crate_id, custom.id);
+    inner = await mutateInner('PATCH', {
+      id: inner.id,
+      revision: inner.revision,
+      action: 'return',
+    });
+    inner = await mutateInner('PATCH', {
+      id: inner.id,
+      revision: inner.revision,
+      action: 'move_outside',
+      destination: 'Bureau',
+      return_date: null,
+      move_note: 'Montage',
+    });
+    assert.equal(currentCrateId(inner), null);
+    assert.equal(innerBoxCurrentLocation(inner, [custom, auto]), 'Bureau');
+    inner = await mutateInner('PATCH', {
+      id: inner.id,
+      revision: inner.revision,
+      action: 'relocate',
+      destination_crate_id: auto.id,
+    });
+    assert.equal(inner.home_crate_id, auto.id);
+    assert.equal(currentCrateId(inner), auto.id);
+    await assert.rejects(mutate('DELETE', auto), /foreign key|violates/i);
+    await mutateInner('DELETE', { id: inner.id, revision: inner.revision });
     await db.query("select public.manage_category('add','Loisirs perso')");
     custom = await mutate('PUT', { ...custom, category: 'Loisirs perso' });
     await db.query("select public.manage_category('delete','Loisirs perso')");

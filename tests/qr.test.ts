@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { emptyCrate } from '../lib/crates.ts';
+import { emptyInnerBox } from '../lib/inner-boxes.ts';
 import {
   crateQrValue,
+  innerBoxQrValue,
+  resolveInventoryQrValue,
   resolveQrValue,
   appendContents,
   rememberQr,
@@ -49,6 +52,32 @@ test('QR: les trois valeurs générées sont lisibles par le décodeur caméra',
   }
 });
 
+test('QR: une boîte intérieure est distinguée d’une caisse', () => {
+  const crate = { ...emptyCrate, id: 'crate-1', code: 'G-000001', name: 'Électronique' };
+  const inner = {
+    ...emptyInnerBox,
+    id: 'box-1',
+    code: 'B-000001',
+    name: 'Connecteurs',
+    home_crate_id: crate.id,
+  };
+  const link = innerBoxQrValue(inner, 'view', 'https://example.test/grenier2/');
+  assert.equal(link, 'https://example.test/grenier2/?boite=box-1&action=view');
+  assert.deepEqual(resolveInventoryQrValue(link, [crate], [inner], 'https://example.test'), {
+    kind: 'box',
+    box: inner,
+    action: 'view',
+  });
+  assert.equal(
+    resolveInventoryQrValue('G-000001', [crate], [inner], 'https://example.test')?.kind,
+    'crate',
+  );
+  assert.equal(
+    resolveInventoryQrValue('b-000001', [crate], [inner], 'https://example.test')?.kind,
+    'box',
+  );
+});
+
 test('QR: connexion différée, expiration et ajout sans perte de contenu', () => {
   const data = new Map<string, string>();
   const storage = {
@@ -61,10 +90,22 @@ test('QR: connexion différée, expiration et ajout sans perte de contenu', () =
     },
   };
   rememberQr('?caisse=G-123&action=add', storage, 1000);
-  assert.deepEqual(takePendingQr(storage, 1500), { id: 'G-123', action: 'add', at: 1000 });
+  assert.deepEqual(takePendingQr(storage, 1500), {
+    kind: 'crate',
+    id: 'G-123',
+    action: 'add',
+    at: 1000,
+  });
   assert.equal(takePendingQr(storage, 1600), null);
   rememberQr('?caisse=G-123', storage, 1000);
   assert.equal(takePendingQr(storage, 4000000), null);
+  rememberQr('?boite=B-123&action=add', storage, 1000);
+  assert.deepEqual(takePendingQr(storage, 1500), {
+    kind: 'box',
+    id: 'B-123',
+    action: 'add',
+    at: 1000,
+  });
   assert.equal(
     appendContents('PLA blanc\nPETG', 'PLA bleu\nCâble'),
     'PLA blanc\nPETG\nPLA bleu\nCâble',
