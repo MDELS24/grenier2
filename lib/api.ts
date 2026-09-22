@@ -15,6 +15,7 @@ export async function listCrates(): Promise<Crate[]> {
   const { data, error } = await client()
     .from('boxes')
     .select('*')
+    .order('created_at', { ascending: false })
     .order('id', { ascending: false });
   if (error) throw error;
   return data as Crate[];
@@ -44,7 +45,8 @@ export async function listInnerBoxes(): Promise<InnerBox[]> {
   const { data, error } = await client()
     .from('inner_boxes')
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false });
   if (error) throw error;
   return data as InnerBox[];
 }
