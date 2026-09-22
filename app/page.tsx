@@ -446,12 +446,12 @@ export default function Home() {
           </span>
           grenier2<span className="brand-dot">.</span>
         </a>
+        <h1 className="topbar-slogan">Chaque caisse, au bon endroit.</h1>
       </header>
       <main>
         <div className="page-heading">
           <div>
             <div className="eyebrow">MON INVENTAIRE</div>
-            <h1>Chaque caisse, au bon endroit.</h1>
             <p>Sa place habituelle, son emplacement actuel. Même le temps d’un projet.</p>
           </div>
           <button className="primary" onClick={() => edit(emptyCrate)}>
