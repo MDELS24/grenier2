@@ -1,6 +1,7 @@
 import InventoryTransfer from './inventory-transfer';
 import CategoryManager from './category-manager';
 import QrManager from './qr-manager';
+import CrateTable from './crate-table';
 import { appendContents, takePendingQr } from '@/lib/qr';
 import { listCrates, mutateCrate, CrateError, listCategories } from '@/lib/api';
 ('use client');
@@ -446,6 +447,7 @@ export default function Home() {
         </section>
         <div className="inventory-actions">
           <InventoryTransfer boxes={boxes} onChange={() => void refresh()} />
+          <CrateTable boxes={boxes} onChange={() => void refresh()} />
           <CategoryManager
             onChange={() => {
               setCategory('Toutes');

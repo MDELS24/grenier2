@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { Download, Settings, Upload } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { client } from '@/lib/supabase';
 import {
@@ -33,6 +34,7 @@ export default function InventoryTransfer({
   boxes: Crate[];
   onChange: () => void;
 }) {
+  const fileInput = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false),
     [parsed, setParsed] = useState<ReturnType<typeof parseCsv> | null>(null),
     [mapping, setMapping] = useState<CsvMapping>({}),
@@ -98,12 +100,6 @@ export default function InventoryTransfer({
   }
   return (
     <>
-      <button className="secondary" onClick={() => download()} disabled={!boxes.length}>
-        Exporter CSV Grenier2
-      </button>
-      <button className="secondary" onClick={() => download(true)} disabled={!boxes.length}>
-        Exporter CSV Itemlist
-      </button>
       <button
         className="secondary"
         onClick={() => {
@@ -112,7 +108,7 @@ export default function InventoryTransfer({
           setSuccess('');
         }}
       >
-        Importer CSV
+        <Settings size={17} /> Maintenance
       </button>
       <Dialog
         open={open}
@@ -121,14 +117,41 @@ export default function InventoryTransfer({
         }}
       >
         <DialogContent className="crate-dialog">
-          <DialogTitle>Importer un inventaire CSV</DialogTitle>
+          <DialogTitle>Maintenance de l’inventaire</DialogTitle>
           <DialogDescription>
-            Associez les colonnes de votre fichier. L’import ajoute des caisses sans remplacer
-            celles qui existent.
+            Exportez une sauvegarde ou importez un inventaire. L’import ajoute des caisses sans
+            remplacer celles qui existent.
           </DialogDescription>
-          <label>
-            Fichier CSV
+          <div className="maintenance-actions">
+            <button className="secondary" onClick={() => download()} disabled={!boxes.length}>
+              <Download size={18} />
+              <span>
+                <strong>Exporter Grenier2</strong>
+                <small>Sauvegarde complète de l’inventaire</small>
+              </span>
+            </button>
+            <button className="secondary" onClick={() => download(true)} disabled={!boxes.length}>
+              <Download size={18} />
+              <span>
+                <strong>Exporter Itemlist</strong>
+                <small>Format compatible avec l’application iOS</small>
+              </span>
+            </button>
+            <button
+              className="secondary"
+              onClick={() => fileInput.current?.click()}
+              disabled={busy}
+            >
+              <Upload size={18} />
+              <span>
+                <strong>Importer un CSV</strong>
+                <small>Grenier2, Itemlist ou colonnes personnalisées</small>
+              </span>
+            </button>
             <input
+              ref={fileInput}
+              className="visually-hidden"
+              aria-label="Fichier CSV à importer"
               type="file"
               accept=".csv,text/csv,text/plain"
               disabled={busy}
@@ -139,7 +162,7 @@ export default function InventoryTransfer({
                 void read(file);
               }}
             />
-          </label>
+          </div>
           {error && (
             <p role="alert" className="error">
               {error}
