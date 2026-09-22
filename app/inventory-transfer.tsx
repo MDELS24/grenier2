@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
-import { Download, Settings, Upload } from 'lucide-react';
+import { Download, Moon, Settings, Sun, Upload } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { client } from '@/lib/supabase';
+import { applyTheme, type Theme } from './theme';
 import {
   csvFields,
   exportCsv,
@@ -36,6 +37,9 @@ export default function InventoryTransfer({
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false),
+    [theme, setTheme] = useState<Theme>(() =>
+      document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light',
+    ),
     [parsed, setParsed] = useState<ReturnType<typeof parseCsv> | null>(null),
     [mapping, setMapping] = useState<CsvMapping>({}),
     [group, setGroup] = useState(false),
@@ -43,6 +47,13 @@ export default function InventoryTransfer({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [success, setSuccess] = useState('');
+
+  /** Change immédiatement l’apparence et conserve le choix sur cet appareil. */
+  function toggleTheme() {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    applyTheme(nextTheme);
+    setTheme(nextTheme);
+  }
   let preview: ReturnType<typeof mapCsv> = [],
     previewError = '';
   if (parsed)
@@ -119,10 +130,23 @@ export default function InventoryTransfer({
         <DialogContent className="crate-dialog">
           <DialogTitle>Maintenance de l’inventaire</DialogTitle>
           <DialogDescription>
-            Exportez une sauvegarde ou importez un inventaire. L’import ajoute des caisses sans
-            remplacer celles qui existent.
+            Réglez l’apparence, exportez une sauvegarde ou importez un inventaire. L’import ajoute
+            des caisses sans remplacer celles qui existent.
           </DialogDescription>
           <div className="maintenance-actions">
+            <button
+              className="secondary theme-toggle"
+              onClick={toggleTheme}
+              aria-label={`Passer en mode ${theme === 'dark' ? 'clair' : 'sombre'}`}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              <span>
+                <strong>Mode {theme === 'dark' ? 'clair' : 'sombre'}</strong>
+                <small>
+                  {theme === 'dark' ? 'Le mode sombre est actif' : 'Le mode clair est actif'}
+                </small>
+              </span>
+            </button>
             <button className="secondary" onClick={() => download()} disabled={!boxes.length}>
               <Download size={18} />
               <span>

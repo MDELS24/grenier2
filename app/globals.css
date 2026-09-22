@@ -1434,3 +1434,225 @@ h2 span {
     grid-template-columns: 1fr;
   }
 }
+
+/* Dark theme: surfaces and text keep strong contrast while QR labels remain white. */
+:root[data-theme='dark'] {
+  --background: #101713;
+  --foreground: #e8f1ec;
+  --card: #18221d;
+  --card-foreground: #e8f1ec;
+  --popover: #1d2923;
+  --popover-foreground: #e8f1ec;
+  --primary: #62b58f;
+  --primary-foreground: #07110c;
+  --secondary: #24312b;
+  --secondary-foreground: #e8f1ec;
+  --muted: #24312b;
+  --muted-foreground: #a9b9b0;
+  --accent: #2a3a32;
+  --accent-foreground: #f1f7f3;
+  --destructive: #ff9a90;
+  --border: #34483e;
+  --input: #34483e;
+  --ring: #79c7a4;
+  --sidebar: #18221d;
+  --sidebar-foreground: #e8f1ec;
+  --sidebar-primary: #62b58f;
+  --sidebar-primary-foreground: #07110c;
+  --sidebar-accent: #2a3a32;
+  --sidebar-accent-foreground: #f1f7f3;
+  --sidebar-border: #34483e;
+  --sidebar-ring: #79c7a4;
+}
+
+[data-theme='dark'] .topbar,
+[data-theme='dark'] .stats,
+[data-theme='dark'] .crate,
+[data-theme='dark'] .crate-dialog,
+[data-theme='dark'] .auth-card {
+  background: #18221d !important;
+  border-color: #34483e;
+}
+[data-theme='dark'] .brand,
+[data-theme='dark'] .search input,
+[data-theme='dark'] .crate-dialog input,
+[data-theme='dark'] .crate-dialog textarea,
+[data-theme='dark'] .crate-dialog select {
+  color: #e8f1ec;
+}
+[data-theme='dark'] .eyebrow,
+[data-theme='dark'] .mini-label,
+[data-theme='dark'] .refresh-button,
+[data-theme='dark'] .filter-help,
+[data-theme='dark'] .field-help,
+[data-theme='dark'] .auth-note,
+[data-theme='dark'] .category-management small,
+[data-theme='dark'] .maintenance-actions small {
+  color: #a9b9b0;
+}
+[data-theme='dark'] .page-heading p,
+[data-theme='dark'] .muted,
+[data-theme='dark'] .stats div div span,
+[data-theme='dark'] .stats aside p,
+[data-theme='dark'] .crate-top,
+[data-theme='dark'] .crate-label span,
+[data-theme='dark'] .crate-location,
+[data-theme='dark'] .items-preview,
+[data-theme='dark'] .crate footer,
+[data-theme='dark'] .where-label,
+[data-theme='dark'] .bottom-note {
+  color: #a9b9b0;
+}
+[data-theme='dark'] .stats > div:not(:first-child)::before,
+[data-theme='dark'] .crate footer,
+[data-theme='dark'] .whereabouts,
+[data-theme='dark'] .category-management li {
+  border-color: #34483e;
+}
+[data-theme='dark'] .stat-icon,
+[data-theme='dark'] .stats aside,
+[data-theme='dark'] h2 span,
+[data-theme='dark'] .account-bar,
+[data-theme='dark'] .auth-icon,
+[data-theme='dark'] .detail-movement,
+[data-theme='dark'] .home-reminder,
+[data-theme='dark'] .return-destination,
+[data-theme='dark'] .login-success {
+  background: #223129;
+  color: #c7ded1;
+}
+[data-theme='dark'] .search,
+[data-theme='dark'] .location-select,
+[data-theme='dark'] .movement-filters button,
+[data-theme='dark'] .secondary,
+[data-theme='dark'] .crate-dialog input,
+[data-theme='dark'] .crate-dialog textarea,
+[data-theme='dark'] .crate-dialog select,
+[data-theme='dark'] .movement-dialog [data-slot='input-group'],
+[data-theme='dark'] .qr-maker select,
+[data-theme='dark'] .qr-reader select,
+[data-theme='dark'] .csv-mapping select {
+  background: #1d2923 !important;
+  border-color: #42584c !important;
+  color: #e8f1ec;
+}
+[data-theme='dark'] .search,
+[data-theme='dark'] .secondary,
+[data-theme='dark'] .movement-filters button {
+  color: #c7ded1;
+}
+[data-theme='dark'] .secondary:hover,
+[data-theme='dark'] .filters button:hover,
+[data-theme='dark'] .movement-filters button:hover,
+[data-theme='dark'] .date-shortcuts button:hover {
+  background: #2b3d34 !important;
+}
+[data-theme='dark'] .filters button {
+  color: #b3c2ba;
+}
+[data-theme='dark'] .filters button.active,
+[data-theme='dark'] .movement-filters button.selected {
+  background: #315d49 !important;
+  border-color: #4b8069;
+  color: #f4fbf7;
+}
+[data-theme='dark'] .crate:hover {
+  border-color: #68aa8b;
+  box-shadow: 0 8px 25px #0000003d;
+}
+[data-theme='dark'] .crate-label,
+[data-theme='dark'] .whereabouts svg,
+[data-theme='dark'] .crate footer span:last-child,
+[data-theme='dark'] .crate footer button,
+[data-theme='dark'] .at-home {
+  color: #8fc5aa;
+}
+[data-theme='dark'] .whereabouts strong {
+  color: #e8f1ec;
+}
+[data-theme='dark'] .add-card,
+[data-theme='dark'] .empty {
+  background: #17231d;
+  border-color: #476356;
+  color: #b7d2c3;
+}
+[data-theme='dark'] .add-card > span {
+  background: #24362c;
+  border-color: #476356;
+}
+[data-theme='dark'] .add-card small,
+[data-theme='dark'] .empty p {
+  color: #a9b9b0;
+}
+[data-theme='dark'] .empty h3 {
+  color: #d8e9df;
+}
+[data-theme='dark'] .movement-info {
+  background: #352c19;
+  color: #f2d58d;
+}
+[data-theme='dark'] .movement-info .move-reason {
+  color: #dfc68c;
+}
+[data-theme='dark'] .late {
+  color: #ff9a90;
+}
+[data-theme='dark'] .return-button,
+[data-theme='dark'] .date-shortcuts button {
+  background: #243a2e;
+  border-color: #446351;
+  color: #cce4d7;
+}
+[data-theme='dark'] .bulk-toolbar,
+[data-theme='dark'] .bulk-message {
+  background: #1d2b24;
+  border-color: #3a5145;
+  color: #c7ded1;
+}
+[data-theme='dark'] .bulk-toolbar > span,
+[data-theme='dark'] .bulk-toolbar label {
+  color: #b7cabf;
+}
+[data-theme='dark'] .crate-table-wrap {
+  border-color: #34483e;
+}
+[data-theme='dark'] .crate-table th {
+  background: #223129;
+  border-color: #40564a;
+}
+[data-theme='dark'] .crate-table td {
+  border-color: #2e4037;
+}
+[data-theme='dark'] .crate-table tbody tr:hover,
+[data-theme='dark'] .crate-table tbody tr.selected {
+  background: #23372c;
+}
+[data-theme='dark'] .table-badge {
+  background: #33452b;
+  color: #c3d99e;
+}
+[data-theme='dark'] .danger,
+[data-theme='dark'] .error {
+  background: #3a211f;
+  color: #ffb1a8;
+}
+[data-theme='dark'] .qr-tabs button,
+[data-theme='dark'] .qr-maker fieldset {
+  border-color: #42584c;
+}
+[data-theme='dark'] .qr-tabs button.active {
+  background: #315d49;
+  color: #f4fbf7;
+}
+[data-theme='dark'] .qr-label {
+  color: #171f1b;
+}
+[data-theme='dark'] .qr-label small {
+  color: #52635a;
+}
+
+@media print {
+  :root[data-theme='dark'] {
+    color-scheme: light;
+  }
+}

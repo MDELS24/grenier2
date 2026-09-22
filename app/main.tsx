@@ -4,8 +4,12 @@ import { Archive, Mail, LogOut } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 import { allowedEmail, supabase } from '@/lib/supabase';
 import { rememberQr } from '@/lib/qr';
+import { initializeTheme } from './theme';
 const Home = lazy(() => import('./page'));
 import './globals.css';
+
+initializeTheme();
+
 /** Gère la session Supabase et affiche la connexion ou l’inventaire privé. */
 function App() {
   const [session, setSession] = useState<Session | null>(null),
