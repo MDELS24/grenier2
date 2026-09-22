@@ -1556,6 +1556,34 @@ h2 span {
   border-color: #4b8069;
   color: #f4fbf7;
 }
+[data-theme='dark'] .movement-filters button:not(.selected) span {
+  background: #31443a;
+  color: #d8ebe0;
+}
+[data-theme='dark'] .category {
+  background: #303a44;
+  color: #d7e1ed;
+}
+[data-theme='dark'] .cat-0 {
+  background: #3a301e;
+  color: #f4d68f;
+}
+[data-theme='dark'] .cat-1 {
+  background: #25344a;
+  color: #c9dcfa;
+}
+[data-theme='dark'] .cat-2 {
+  background: #3a2a38;
+  color: #efc5e5;
+}
+[data-theme='dark'] .cat-3 {
+  background: #392f26;
+  color: #ebcda8;
+}
+[data-theme='dark'] .cat-4 {
+  background: #1f3a31;
+  color: #b3e5d1;
+}
 [data-theme='dark'] .crate:hover {
   border-color: #68aa8b;
   box-shadow: 0 8px 25px #0000003d;
