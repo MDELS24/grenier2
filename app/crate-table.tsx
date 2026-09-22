@@ -100,6 +100,14 @@ export default function CrateTable({ boxes, onChange }: { boxes: Crate[]; onChan
   }
 
   const allSelected = rows.length > 0 && rows.every((box) => selected.has(box.id));
+  function openTable() {
+    // Une nouvelle session commence sans choix conservé d'une ouverture précédente.
+    setSelected(new Set());
+    setDestination('');
+    setReturnDate('');
+    setMessage('');
+    setOpen(true);
+  }
   const heading = (key: SortKey, label: string) => (
     <button type="button" onClick={() => toggleSort(key)} aria-label={`Trier par ${label}`}>
       {label} <ArrowUpDown size={13} />
@@ -108,7 +116,7 @@ export default function CrateTable({ boxes, onChange }: { boxes: Crate[]; onChan
   );
   return (
     <>
-      <button className="secondary" onClick={() => setOpen(true)}>
+      <button className="secondary" onClick={openTable}>
         <ListChecks size={17} /> Tableau des caisses
       </button>
       <Dialog open={open} onOpenChange={(value) => !busy && setOpen(value)}>
