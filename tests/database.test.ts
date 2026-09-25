@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { currentLocation, due, searchCrates, type Crate } from '../lib/crates.ts';
-import { currentCrateId, innerBoxCurrentLocation, type InnerBox } from '../lib/inner-boxes.ts';
+import {
+  currentCrateId,
+  innerBoxCurrentLocation,
+  innerBoxFollowsMovedCrate,
+  type InnerBox,
+} from '../lib/inner-boxes.ts';
 test('Postgres: inventory, movements, conflicts and access control', async () => {
   const db = new PGlite();
   try {
@@ -153,7 +158,22 @@ test('Postgres: inventory, movements, conflicts and access control', async () =>
     });
     assert.match(inner.code, /^B-\d{6,}$/);
     assert.equal(currentCrateId(inner), custom.id);
-    assert.match(innerBoxCurrentLocation(inner, [custom, auto]), /Boîte Noël/);
+    assert.equal(innerBoxCurrentLocation(inner, [custom, auto]), custom.location);
+    custom = await mutate('PATCH', {
+      id: custom.id,
+      revision: custom.revision,
+      action: 'move',
+      destination: 'Atelier',
+      return_date: null,
+      move_note: 'Travaux',
+    });
+    assert.equal(innerBoxCurrentLocation(inner, [custom, auto]), 'Atelier');
+    assert.equal(innerBoxFollowsMovedCrate(inner, [custom, auto]), true);
+    custom = await mutate('PATCH', {
+      id: custom.id,
+      revision: custom.revision,
+      action: 'return',
+    });
     inner = await mutateInner('PATCH', {
       id: inner.id,
       revision: inner.revision,
