@@ -18,6 +18,7 @@ export default function CrateContentsEditor({ crate, innerBoxes, onClose, onSave
     () => (crate ? innerBoxes.filter((box) => currentCrateId(box) === crate.id) : []),
     [crate, innerBoxes],
   );
+  const containedRevision = contained.map((box) => `${box.id}:${box.revision}`).join('|');
   const [crateItems, setCrateItems] = useState('');
   const [boxItems, setBoxItems] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -27,8 +28,11 @@ export default function CrateContentsEditor({ crate, innerBoxes, onClose, onSave
     if (!crate) return;
     setCrateItems(crate.items);
     setBoxItems(Object.fromEntries(contained.map((box) => [box.id, box.items])));
+  }, [crate?.id, crate?.revision, containedRevision]);
+
+  useEffect(() => {
     setMessage('');
-  }, [crate, contained]);
+  }, [crate?.id]);
 
   async function saveAll() {
     if (!crate) return;
