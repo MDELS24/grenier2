@@ -15,7 +15,6 @@ import {
   Search,
   MapPin,
   ArrowUpRight,
-  Shell,
   PackageOpen,
   Layers,
   Archive,
@@ -73,6 +72,27 @@ import {
 
 type Movement = { box: Crate; destination: string; return_date: string; move_note: string };
 type Status = 'all' | 'moved' | 'due';
+
+/** Coquille Saint-Jacques stylisée utilisée pour représenter les objets inventoriés. */
+function ScallopShellIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 3.2c-1.6 0-2.8 1.8-3.3 4.3-1.6-1.9-3.6-2.8-4.6-1.8-1.3 1.3-.3 4.2 2 6.5-2.3-.3-4.3.3-4.3 1.8 0 2.2 4.5 5.8 10.2 6.8 5.7-1 10.2-4.6 10.2-6.8 0-1.5-2-2.1-4.3-1.8 2.3-2.3 3.3-5.2 2-6.5-1-1-3 .1-4.6 1.8-.5-2.5-1.7-4.3-3.3-4.3Z" />
+      <path d="m12 4 .1 16.2M8.8 7.5l1.7 12.4M15.2 7.5l-1.7 12.4M4.8 7.4l4 11.6M19.2 7.4l-4 11.6M2.8 13.2l4.1 4.3M21.2 13.2l-4.1 4.3" />
+    </svg>
+  );
+}
+
 function ReturnDate({ box, today }: { box: Crate; today: string }) {
   if (!box.return_date) return <span>Date de retour non définie</span>;
   return (
@@ -468,9 +488,26 @@ export default function Home() {
             <div className="eyebrow">MON INVENTAIRE</div>
             <p>Sa place habituelle, son emplacement actuel. Même le temps d’un projet.</p>
           </div>
-          <button className="primary" onClick={() => edit(emptyCrate)}>
-            <Plus size={19} /> Nouvelle caisse
-          </button>
+          <div className="page-heading-actions" aria-label="Actions de l’inventaire">
+            <InventoryTransfer boxes={boxes} onChange={() => void refresh()} />
+            <CategoryManager
+              onChange={() => {
+                setCategory('Toutes');
+                void refresh();
+              }}
+            />
+            <InnerBoxManager
+              crates={boxes}
+              innerBoxes={innerBoxes}
+              onChange={() => void refresh()}
+              request={innerBoxRequest}
+              onPrintQr={(box) => setQrInnerBox({ ...box })}
+              showTableButton={false}
+            />
+            <button className="primary new-crate-button" onClick={() => edit(emptyCrate)}>
+              <Plus size={18} /> Nouvelle caisse
+            </button>
+          </div>
         </div>
         <section className="stats has-boxes" aria-label="Résumé de votre rangement">
           <button
@@ -511,7 +548,7 @@ export default function Home() {
                 .padStart(2, '0')}
             </strong>
             <span className="stat-icon" title="Objets répertoriés" aria-hidden="true">
-              <Shell />
+              <ScallopShellIcon />
             </span>
           </button>
           <button
@@ -534,39 +571,24 @@ export default function Home() {
             </p>
           </aside>
         </section>
-        <div className="inventory-actions">
-          <InventoryTransfer boxes={boxes} onChange={() => void refresh()} />
-          <CrateTable
-            boxes={boxes}
-            innerBoxes={innerBoxes}
-            onChange={() => void refresh()}
-            onOpen={edit}
-            onOpenInnerBox={(box) => requestInnerBox(box.id)}
-            onPrintSelection={(keys) => setQrSelection({ token: Date.now(), keys })}
-            openRequest={tableRequest}
-          />
-          <InnerBoxManager
-            crates={boxes}
-            innerBoxes={innerBoxes}
-            onChange={() => void refresh()}
-            request={innerBoxRequest}
-            onPrintQr={(box) => setQrInnerBox({ ...box })}
-            showTableButton={false}
-          />
-          <ObjectTable
-            crates={boxes}
-            innerBoxes={innerBoxes}
-            onOpenCrate={edit}
-            onOpenInnerBox={(box) => requestInnerBox(box.id)}
-            openRequest={objectTableRequest}
-          />
-          <CategoryManager
-            onChange={() => {
-              setCategory('Toutes');
-              void refresh();
-            }}
-          />
-        </div>
+        <CrateTable
+          boxes={boxes}
+          innerBoxes={innerBoxes}
+          onChange={() => void refresh()}
+          onOpen={edit}
+          onOpenInnerBox={(box) => requestInnerBox(box.id)}
+          onPrintSelection={(keys) => setQrSelection({ token: Date.now(), keys })}
+          openRequest={tableRequest}
+          showTrigger={false}
+        />
+        <ObjectTable
+          crates={boxes}
+          innerBoxes={innerBoxes}
+          onOpenCrate={edit}
+          onOpenInnerBox={(box) => requestInnerBox(box.id)}
+          openRequest={objectTableRequest}
+          showTrigger={false}
+        />
         <section className="inventory">
           <div className="section-heading">
             <h2>

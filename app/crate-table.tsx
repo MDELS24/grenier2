@@ -52,6 +52,7 @@ export default function CrateTable({
   onOpenInnerBox,
   onPrintSelection,
   openRequest,
+  showTrigger = true,
 }: {
   boxes: Crate[];
   innerBoxes: InnerBox[];
@@ -60,6 +61,7 @@ export default function CrateTable({
   onOpenInnerBox: (box: InnerBox) => void;
   onPrintSelection: (keys: string[]) => void;
   openRequest?: ContainerTableRequest;
+  showTrigger?: boolean;
 }) {
   const handledOpenRequest = useRef(openRequest?.token);
   const [open, setOpen] = useState(false);
@@ -291,14 +293,16 @@ export default function CrateTable({
 
   return (
     <>
-      <button
-        className="secondary menu-icon-button"
-        onClick={() => openTable('default')}
-        aria-label="Tableau des contenants"
-        title="Tableau des contenants"
-      >
-        <ListChecks />
-      </button>
+      {showTrigger && (
+        <button
+          className="secondary menu-icon-button"
+          onClick={() => openTable('default')}
+          aria-label="Tableau des contenants"
+          title="Tableau des contenants"
+        >
+          <ListChecks />
+        </button>
+      )}
       <Dialog open={open} onOpenChange={(value) => !busy && setOpen(value)}>
         <DialogContent className="crate-dialog table-dialog storage-table-dialog">
           <DialogTitle>
@@ -406,13 +410,9 @@ export default function CrateTable({
                       key={`crate:${crate.id}`}
                       className={selected.has(`crate:${crate.id}`) ? 'selected' : ''}
                       tabIndex={0}
-                      onClick={() => {
-                        setOpen(false);
-                        onOpen(crate);
-                      }}
+                      onClick={() => onOpen(crate)}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') {
-                          setOpen(false);
                           onOpen(crate);
                         }
                       }}
@@ -472,13 +472,9 @@ export default function CrateTable({
                             key={`box:${box.id}`}
                             className={`tree-child ${selected.has(`box:${box.id}`) ? 'selected' : ''}`}
                             tabIndex={0}
-                            onClick={() => {
-                              setOpen(false);
-                              onOpenInnerBox(box);
-                            }}
+                            onClick={() => onOpenInnerBox(box)}
                             onKeyDown={(event) => {
                               if (event.key === 'Enter') {
-                                setOpen(false);
                                 onOpenInnerBox(box);
                               }
                             }}
@@ -533,13 +529,9 @@ export default function CrateTable({
                       key={`box:${box.id}`}
                       className={`tree-child standalone ${selected.has(`box:${box.id}`) ? 'selected' : ''}`}
                       tabIndex={0}
-                      onClick={() => {
-                        setOpen(false);
-                        onOpenInnerBox(box);
-                      }}
+                      onClick={() => onOpenInnerBox(box)}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') {
-                          setOpen(false);
                           onOpenInnerBox(box);
                         }
                       }}

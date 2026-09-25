@@ -109,7 +109,6 @@ export default function InnerBoxManager({
   );
 
   function openEditor(box: InnerBox) {
-    setTableOpen(false);
     setEditor({ ...box });
     setError('');
   }
@@ -480,6 +479,7 @@ export default function InnerBoxManager({
                     Motif <span className="muted">— facultatif</span>
                     <textarea
                       rows={2}
+                      maxLength={2000}
                       value={movement.note}
                       onChange={(event) => setMovement({ ...movement, note: event.target.value })}
                     />

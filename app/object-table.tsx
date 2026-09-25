@@ -28,12 +28,14 @@ export default function ObjectTable({
   onOpenCrate,
   onOpenInnerBox,
   openRequest,
+  showTrigger = true,
 }: {
   crates: Crate[];
   innerBoxes: InnerBox[];
   onOpenCrate: (crate: Crate) => void;
   onOpenInnerBox: (box: InnerBox) => void;
   openRequest?: number;
+  showTrigger?: boolean;
 }) {
   const handledOpenRequest = useRef(openRequest);
   const [open, setOpen] = useState(false);
@@ -116,7 +118,6 @@ export default function ObjectTable({
   );
 
   function openRow(row: ObjectRow) {
-    setOpen(false);
     if (row.innerBoxId) {
       const box = innerBoxes.find((candidate) => candidate.id === row.innerBoxId);
       if (box) onOpenInnerBox(box);
@@ -128,14 +129,16 @@ export default function ObjectTable({
 
   return (
     <>
-      <button
-        className="secondary menu-icon-button"
-        onClick={() => setOpen(true)}
-        aria-label="Tableau des objets"
-        title="Tableau des objets"
-      >
-        <ListTree />
-      </button>
+      {showTrigger && (
+        <button
+          className="secondary menu-icon-button"
+          onClick={() => setOpen(true)}
+          aria-label="Tableau des objets"
+          title="Tableau des objets"
+        >
+          <ListTree />
+        </button>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="crate-dialog table-dialog">
           <DialogTitle>Tableau des objets</DialogTitle>
