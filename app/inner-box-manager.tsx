@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpDown, Boxes, MoveRight, PackagePlus, QrCode, Trash2, Undo2 } from 'lucide-react';
+import {
+  ArrowUpDown,
+  Boxes,
+  Maximize2,
+  MoveRight,
+  PackagePlus,
+  QrCode,
+  Trash2,
+  Undo2,
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import InnerBoxContentsEditor from './inner-box-contents-editor';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +64,7 @@ export default function InnerBoxManager({
   const handledRequest = useRef(0);
   const [tableOpen, setTableOpen] = useState(false);
   const [editor, setEditor] = useState<InnerBox | null>(null);
+  const [contentsEditor, setContentsEditor] = useState<InnerBox | null>(null);
   const [movement, setMovement] = useState<MoveDraft | null>(null);
   const [deleting, setDeleting] = useState<InnerBox | null>(null);
   const [sort, setSort] = useState<SortKey>('code');
@@ -297,6 +308,17 @@ export default function InnerBoxManager({
             Les boîtes portent un repère B-… pour ne pas les confondre avec les caisses G-….
           </DialogDescription>
           {editor?.id && (
+            <div className="edit-dialog-nav">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setContentsEditor({ ...editor })}
+              >
+                <Maximize2 size={16} /> Tous les objets
+              </button>
+            </div>
+          )}
+          {editor?.id && (
             <div className="detail-movement inner-box-location">
               <span className="where-label">Actuellement</span>
               <strong>{innerBoxCurrentLocation(editor, crates)}</strong>
@@ -521,6 +543,15 @@ export default function InnerBoxManager({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <InnerBoxContentsEditor
+        box={contentsEditor}
+        onClose={() => setContentsEditor(null)}
+        onSaved={(saved) => {
+          setContentsEditor(saved);
+          setEditor(saved);
+          onChange();
+        }}
+      />
     </>
   );
 }

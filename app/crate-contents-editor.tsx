@@ -9,7 +9,7 @@ type Props = {
   crate: Crate | null;
   innerBoxes: InnerBox[];
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (crate: Crate) => void;
 };
 
 /** Éditeur plein écran du contenu direct et imbriqué d'une caisse. */
@@ -35,13 +35,16 @@ export default function CrateContentsEditor({ crate, innerBoxes, onClose, onSave
     setBusy(true);
     setMessage('');
     try {
-      if (crateItems !== crate.items) await mutateCrate('PUT', { ...crate, items: crateItems });
+      let savedCrate = crate;
+      if (crateItems !== crate.items) {
+        savedCrate = await mutateCrate('PUT', { ...crate, items: crateItems });
+      }
       for (const box of contained) {
         const items = boxItems[box.id] ?? '';
         if (items !== box.items) await mutateInnerBox('PUT', { ...box, items });
       }
       setMessage('Tous les contenus ont été enregistrés.');
-      onSaved();
+      onSaved(savedCrate);
     } catch (error) {
       setMessage((error as Error).message);
     } finally {

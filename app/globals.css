@@ -198,6 +198,12 @@ a:focus-visible {
   gap: 16px;
   padding: 2px;
 }
+.single-contents-editor-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.single-contents-editor-grid .contents-panel textarea {
+  min-height: calc(100dvh - 280px);
+}
 .contents-panel {
   min-width: 0;
   padding: 16px;

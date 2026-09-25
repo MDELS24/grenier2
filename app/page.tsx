@@ -870,7 +870,6 @@ export default function Home() {
                 type="button"
                 className="secondary"
                 onClick={() => {
-                  setOpen(false);
                   setContentsCrate(boxes.find((box) => box.id === draft.id) || draft);
                 }}
               >
@@ -1349,7 +1348,11 @@ export default function Home() {
         crate={contentsCrate}
         innerBoxes={innerBoxes}
         onClose={() => setContentsCrate(null)}
-        onSaved={() => void refresh()}
+        onSaved={(saved) => {
+          setContentsCrate(saved);
+          setDraft(saved);
+          void refresh();
+        }}
       />
     </>
   );
