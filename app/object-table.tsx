@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpDown, ListTree, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { crateCode, currentLocation, normalize, type Crate } from '@/lib/crates';
@@ -27,16 +27,26 @@ export default function ObjectTable({
   innerBoxes,
   onOpenCrate,
   onOpenInnerBox,
+  openRequest,
 }: {
   crates: Crate[];
   innerBoxes: InnerBox[];
   onOpenCrate: (crate: Crate) => void;
   onOpenInnerBox: (box: InnerBox) => void;
+  openRequest?: number;
 }) {
+  const handledOpenRequest = useRef(openRequest);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('name');
   const [ascending, setAscending] = useState(true);
+
+  useEffect(() => {
+    if (openRequest === undefined || openRequest === handledOpenRequest.current) return;
+    handledOpenRequest.current = openRequest;
+    setQuery('');
+    setOpen(true);
+  }, [openRequest]);
 
   const rows = useMemo(() => {
     const result: ObjectRow[] = [];

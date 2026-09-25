@@ -40,6 +40,8 @@ import {
 } from '@/lib/inner-boxes';
 
 type SortKey = 'code' | 'name' | 'type' | 'home' | 'current' | 'items' | 'created';
+export type ContainerTableMode = 'default' | 'crates' | 'expanded' | 'moved';
+export type ContainerTableRequest = { token: number; mode: ContainerTableMode };
 
 /** Explorateur compact des caisses et des boîtes qu'elles contiennent. */
 export default function CrateTable({
@@ -49,7 +51,7 @@ export default function CrateTable({
   onOpen,
   onOpenInnerBox,
   onPrintSelection,
-  openRequest = 0,
+  openRequest,
 }: {
   boxes: Crate[];
   innerBoxes: InnerBox[];
@@ -57,13 +59,14 @@ export default function CrateTable({
   onOpen: (box: Crate) => void;
   onOpenInnerBox: (box: InnerBox) => void;
   onPrintSelection: (keys: string[]) => void;
-  openRequest?: number;
+  openRequest?: ContainerTableRequest;
 }) {
-  const handledOpenRequest = useRef(openRequest);
+  const handledOpenRequest = useRef(openRequest?.token);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
+  const [mode, setMode] = useState<ContainerTableMode>('default');
   const [sort, setSort] = useState<SortKey>('code');
   const [ascending, setAscending] = useState(true);
   const [destination, setDestination] = useState('');
@@ -73,9 +76,9 @@ export default function CrateTable({
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    if (openRequest === handledOpenRequest.current) return;
-    handledOpenRequest.current = openRequest;
-    openTable();
+    if (!openRequest || openRequest.token === handledOpenRequest.current) return;
+    handledOpenRequest.current = openRequest.token;
+    openTable(openRequest.mode);
   }, [openRequest]);
 
   const visibleCrates = useMemo(() => {
@@ -98,13 +101,19 @@ export default function CrateTable({
     return boxes
       .filter(
         (box) =>
-          !needle ||
-          normalize(
-            [crateCode(box), box.name, box.category, box.location, shelfLabel(box), box.items].join(
-              ' ',
-            ),
-          ).includes(needle) ||
-          matchingParents.has(box.id),
+          (mode !== 'moved' || Boolean(box.temporary_location)) &&
+          (!needle ||
+            normalize(
+              [
+                crateCode(box),
+                box.name,
+                box.category,
+                box.location,
+                shelfLabel(box),
+                box.items,
+              ].join(' '),
+            ).includes(needle) ||
+            (mode !== 'crates' && matchingParents.has(box.id))),
       )
       .sort((a, b) => {
         const left = value(a),
@@ -118,17 +127,51 @@ export default function CrateTable({
               });
         return ascending ? comparison : -comparison;
       });
-  }, [boxes, innerBoxes, query, sort, ascending]);
+  }, [boxes, innerBoxes, query, sort, ascending, mode]);
+
+  const visibleCrateIds = useMemo(
+    () => new Set(visibleCrates.map((crate) => crate.id)),
+    [visibleCrates],
+  );
+  const standaloneBoxes = useMemo(() => {
+    if (mode === 'crates') return [];
+    const needle = normalize(query);
+    return innerBoxes.filter((box) => {
+      const moved = innerBoxIsMoved(box) || innerBoxFollowsMovedCrate(box, boxes);
+      const parentVisible = Boolean(
+        currentCrateId(box) && visibleCrateIds.has(currentCrateId(box)!),
+      );
+      const matches =
+        !needle ||
+        normalize(
+          [box.code, box.name, box.items, innerBoxCurrentLocation(box, boxes)].join(' '),
+        ).includes(needle);
+      if (!matches) return false;
+      if (mode === 'moved') return moved && !parentVisible;
+      return !currentCrateId(box);
+    });
+  }, [mode, query, innerBoxes, boxes, visibleCrateIds]);
+
+  function childrenFor(crate: Crate) {
+    if (mode === 'crates') return [];
+    return innerBoxes.filter(
+      (box) =>
+        currentCrateId(box) === crate.id &&
+        (mode !== 'moved' || innerBoxIsMoved(box) || innerBoxFollowsMovedCrate(box, boxes)),
+    );
+  }
 
   const visibleKeys = useMemo(
-    () =>
-      visibleCrates.flatMap((crate) => [
+    () => [
+      ...visibleCrates.flatMap((crate) => [
         `crate:${crate.id}`,
-        ...innerBoxes
-          .filter((box) => currentCrateId(box) === crate.id)
-          .map((box) => `box:${box.id}`),
+        ...(mode === 'expanded' || mode === 'moved' || query.trim()
+          ? childrenFor(crate).map((box) => `box:${box.id}`)
+          : []),
       ]),
-    [visibleCrates, innerBoxes],
+      ...standaloneBoxes.map((box) => `box:${box.id}`),
+    ],
+    [visibleCrates, innerBoxes, mode, query, standaloneBoxes],
   );
   const selectedCrates = boxes.filter((box) => selected.has(`crate:${box.id}`));
   const selectedBoxes = innerBoxes.filter((box) => selected.has(`box:${box.id}`));
@@ -156,9 +199,15 @@ export default function CrateTable({
       return next;
     });
   }
-  function openTable() {
+  function openTable(nextMode: ContainerTableMode = 'default') {
+    setMode(nextMode);
     setSelected(new Set());
-    setExpanded(new Set());
+    setExpanded(
+      nextMode === 'expanded' || nextMode === 'moved'
+        ? new Set(boxes.map((box) => box.id))
+        : new Set(),
+    );
+    setQuery('');
     setDestination('');
     setReturnDate('');
     setMessage('');
@@ -244,7 +293,7 @@ export default function CrateTable({
     <>
       <button
         className="secondary menu-icon-button"
-        onClick={openTable}
+        onClick={() => openTable('default')}
         aria-label="Tableau des contenants"
         title="Tableau des contenants"
       >
@@ -252,10 +301,19 @@ export default function CrateTable({
       </button>
       <Dialog open={open} onOpenChange={(value) => !busy && setOpen(value)}>
         <DialogContent className="crate-dialog table-dialog storage-table-dialog">
-          <DialogTitle>Tableau des caisses et boîtes</DialogTitle>
+          <DialogTitle>
+            {mode === 'crates'
+              ? 'Tableau des caisses'
+              : mode === 'moved'
+                ? 'Contenants déplacés'
+                : 'Tableau des caisses et boîtes'}
+          </DialogTitle>
           <DialogDescription>
-            Recherchez, triez et dépliez une caisse pour voir ses boîtes comme dans un explorateur
-            de fichiers.
+            {mode === 'crates'
+              ? 'Recherchez et triez toutes les caisses.'
+              : mode === 'moved'
+                ? 'Caisses et boîtes qui ne se trouvent pas à leur place habituelle.'
+                : 'Recherchez, triez et dépliez une caisse pour voir ses boîtes comme dans un explorateur de fichiers.'}
           </DialogDescription>
           <label className="search storage-table-search">
             <Search size={18} />
@@ -336,8 +394,13 @@ export default function CrateTable({
               </thead>
               <tbody>
                 {visibleCrates.map((crate) => {
-                  const children = innerBoxes.filter((box) => currentCrateId(box) === crate.id);
-                  const showChildren = expanded.has(crate.id) || Boolean(query.trim());
+                  const children = childrenFor(crate);
+                  const showChildren =
+                    mode !== 'crates' &&
+                    (expanded.has(crate.id) ||
+                      mode === 'expanded' ||
+                      mode === 'moved' ||
+                      Boolean(query.trim()));
                   return [
                     <tr
                       key={`crate:${crate.id}`}
@@ -463,10 +526,61 @@ export default function CrateTable({
                       : []),
                   ];
                 })}
+                {standaloneBoxes.map((box) => {
+                  const home = boxes.find((crate) => crate.id === box.home_crate_id);
+                  return (
+                    <tr
+                      key={`box:${box.id}`}
+                      className={`tree-child standalone ${selected.has(`box:${box.id}`) ? 'selected' : ''}`}
+                      tabIndex={0}
+                      onClick={() => {
+                        setOpen(false);
+                        onOpenInnerBox(box);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          setOpen(false);
+                          onOpenInnerBox(box);
+                        }
+                      }}
+                    >
+                      <td>
+                        <input
+                          type="checkbox"
+                          aria-label={`Sélectionner ${innerBoxCode(box)}`}
+                          checked={selected.has(`box:${box.id}`)}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={() => toggle(`box:${box.id}`)}
+                        />
+                      </td>
+                      <td>
+                        <span className="tree-cell">
+                          <Boxes size={16} />
+                          <strong>{innerBoxCode(box)}</strong>
+                        </span>
+                      </td>
+                      <td>{box.name}</td>
+                      <td>
+                        <span className="type-badge box">
+                          <Boxes size={14} /> Boîte
+                        </span>
+                      </td>
+                      <td>{home ? crateCode(home) : 'Caisse introuvable'}</td>
+                      <td>
+                        {innerBoxCurrentLocation(box, boxes)}
+                        {innerBoxIsMoved(box) && <span className="table-badge">temporaire</span>}
+                      </td>
+                      <td>{countItems(box.items)}</td>
+                      <td>{formatDate(box.created_at)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          {!visibleCrates.length && <p>Aucun contenant ne correspond à cette recherche.</p>}
+          {!visibleCrates.length && !standaloneBoxes.length && (
+            <p>Aucun contenant ne correspond à cette recherche.</p>
+          )}
         </DialogContent>
       </Dialog>
       <AlertDialog open={confirmDelete} onOpenChange={(value) => !busy && setConfirmDelete(value)}>

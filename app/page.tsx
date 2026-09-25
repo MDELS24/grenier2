@@ -1,7 +1,7 @@
 import InventoryTransfer from './inventory-transfer';
 import CategoryManager from './category-manager';
 import QrManager from './qr-manager';
-import CrateTable from './crate-table';
+import CrateTable, { type ContainerTableMode, type ContainerTableRequest } from './crate-table';
 import InnerBoxManager, { type InnerBoxRequest } from './inner-box-manager';
 import ObjectTable from './object-table';
 import CrateContentsEditor from './crate-contents-editor';
@@ -15,7 +15,7 @@ import {
   Search,
   MapPin,
   ArrowUpRight,
-  SprayCan,
+  Shell,
   PackageOpen,
   Layers,
   Archive,
@@ -93,7 +93,8 @@ export default function Home() {
   const [qrInnerBox, setQrInnerBox] = useState<InnerBox | null>(null);
   const [qrSelection, setQrSelection] = useState<{ token: number; keys: string[] } | null>(null);
   const [contentsCrate, setContentsCrate] = useState<Crate | null>(null);
-  const [tableRequest, setTableRequest] = useState(0);
+  const [tableRequest, setTableRequest] = useState<ContainerTableRequest>();
+  const [objectTableRequest, setObjectTableRequest] = useState(0);
   const [innerBoxRequest, setInnerBoxRequest] = useState<InnerBoxRequest>();
   const innerBoxRequestToken = useRef(0);
   const [boxes, setBoxes] = useState<Crate[]>([]),
@@ -288,6 +289,9 @@ export default function Home() {
   function requestInnerBox(id?: string, homeCrateId?: string) {
     setInnerBoxRequest({ token: ++innerBoxRequestToken.current, id, homeCrateId });
   }
+  function openContainerTable(mode: ContainerTableMode) {
+    setTableRequest({ token: Date.now(), mode });
+  }
   /** Remplace une fiche par la version confirmée par PostgreSQL. */
   function applyRow(row: Crate) {
     ++sequence.current;
@@ -469,22 +473,35 @@ export default function Home() {
           </button>
         </div>
         <section className="stats has-boxes" aria-label="Résumé de votre rangement">
-          <div aria-label={`${boxes.length} caisses répertoriées`}>
+          <button
+            type="button"
+            className="stat-button"
+            aria-label={`${boxes.length} caisses répertoriées. Ouvrir le tableau des caisses.`}
+            onClick={() => openContainerTable('crates')}
+          >
             <strong>{boxes.length.toString().padStart(2, '0')}</strong>
             <span className="stat-icon" title="Caisses répertoriées" aria-hidden="true">
               <Archive />
             </span>
-          </div>
-          <div aria-label={`${innerBoxes.length} boîtes intérieures`}>
+          </button>
+          <button
+            type="button"
+            className="stat-button"
+            aria-label={`${innerBoxes.length} boîtes intérieures. Ouvrir tous les contenants déployés.`}
+            onClick={() => openContainerTable('expanded')}
+          >
             <strong>{innerBoxes.length.toString().padStart(2, '0')}</strong>
             <span className="stat-icon" title="Boîtes intérieures" aria-hidden="true">
               <Boxes />
             </span>
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
+            className="stat-button"
             aria-label={`${countItems(
               [...boxes.map((b) => b.items), ...innerBoxes.map((b) => b.items)].join('\n'),
-            )} objets répertoriés`}
+            )} objets répertoriés. Ouvrir le tableau des objets.`}
+            onClick={() => setObjectTableRequest((request) => request + 1)}
           >
             <strong>
               {countItems(
@@ -494,15 +511,20 @@ export default function Home() {
                 .padStart(2, '0')}
             </strong>
             <span className="stat-icon" title="Objets répertoriés" aria-hidden="true">
-              <SprayCan />
+              <Shell />
             </span>
-          </div>
-          <div aria-label={`${moved.length + movedInnerBoxes.length} contenants déplacés`}>
+          </button>
+          <button
+            type="button"
+            className="stat-button"
+            aria-label={`${moved.length + movedInnerBoxes.length} contenants déplacés. Ouvrir les contenants déplacés.`}
+            onClick={() => openContainerTable('moved')}
+          >
             <strong>{(moved.length + movedInnerBoxes.length).toString().padStart(2, '0')}</strong>
             <span className="stat-icon" title="Contenants déplacés" aria-hidden="true">
               <MoveRight />
             </span>
-          </div>
+          </button>
           <aside>
             <span className="mini-label">UNE CAISSE EMPRUNTÉE ?</span>
             <p>
@@ -536,6 +558,7 @@ export default function Home() {
             innerBoxes={innerBoxes}
             onOpenCrate={edit}
             onOpenInnerBox={(box) => requestInnerBox(box.id)}
+            openRequest={objectTableRequest}
           />
           <CategoryManager
             onChange={() => {
@@ -817,7 +840,7 @@ export default function Home() {
               <button
                 type="button"
                 className="secondary"
-                onClick={() => setTableRequest((request) => request + 1)}
+                onClick={() => openContainerTable('crates')}
               >
                 <ListChecks size={16} /> Tableau des caisses
               </button>

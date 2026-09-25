@@ -322,17 +322,29 @@ h1 {
 .stats.has-boxes {
   grid-template-columns: repeat(4, minmax(0, 1fr)) 1.45fr;
 }
-.stats > div {
+.stats > .stat-button {
   display: flex;
   align-items: center;
   gap: 15px;
   padding: 26px 24px;
   position: relative;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
 }
-.stats > div .stat-icon {
+.stats > .stat-button:hover {
+  background: #f7faf8;
+}
+.stats > .stat-button:focus-visible {
+  z-index: 1;
+  outline-offset: -4px;
+}
+.stats > .stat-button .stat-icon {
   flex: 0 0 auto;
 }
-.stats > div:not(:first-child):before {
+.stats > .stat-button:not(:first-child):before {
   content: '';
   position: absolute;
   left: 0;
@@ -944,7 +956,7 @@ h2 span {
   .stats {
     margin: 25px 0 32px;
   }
-  .stats > div {
+  .stats > .stat-button {
     padding: 18px 8px;
     justify-content: center;
   }
@@ -1794,6 +1806,9 @@ h2 span {
   background: #18221d !important;
   border-color: #34483e;
 }
+[data-theme='dark'] .stats > .stat-button:hover {
+  background: #1d2b24;
+}
 [data-theme='dark'] .inner-box-summary,
 [data-theme='dark'] .crate-inner-boxes {
   background: #14201a;
@@ -1838,7 +1853,7 @@ h2 span {
 [data-theme='dark'] .bottom-note {
   color: #a9b9b0;
 }
-[data-theme='dark'] .stats > div:not(:first-child)::before,
+[data-theme='dark'] .stats > .stat-button:not(:first-child)::before,
 [data-theme='dark'] .crate footer,
 [data-theme='dark'] .whereabouts,
 [data-theme='dark'] .category-management li {
