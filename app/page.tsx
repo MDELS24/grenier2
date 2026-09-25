@@ -4,6 +4,7 @@ import QrManager from './qr-manager';
 import CrateTable from './crate-table';
 import InnerBoxManager, { type InnerBoxRequest } from './inner-box-manager';
 import ObjectTable from './object-table';
+import CrateContentsEditor from './crate-contents-editor';
 import { appendContents, takePendingQr } from '@/lib/qr';
 import { listCrates, mutateCrate, CrateError, listCategories, listInnerBoxes } from '@/lib/api';
 ('use client');
@@ -14,6 +15,7 @@ import {
   Search,
   MapPin,
   ArrowUpRight,
+  SprayCan,
   PackageOpen,
   Layers,
   Archive,
@@ -23,6 +25,7 @@ import {
   Clock3,
   RefreshCw,
   ListChecks,
+  Maximize2,
   Boxes,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -33,14 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Combobox,
-  ComboboxInput,
-  ComboboxContent,
-  ComboboxList,
-  ComboboxItem,
-  ComboboxEmpty,
-} from '@/components/ui/combobox';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -70,6 +65,7 @@ import {
 import {
   currentCrateId,
   innerBoxCode,
+  innerBoxFollowsMovedCrate,
   innerBoxIsMoved,
   searchInnerBoxes,
   type InnerBox,
@@ -95,6 +91,8 @@ export default function Home() {
   const [categories, setCategories] = useState(defaultCategories);
   const [qrCrate, setQrCrate] = useState<Crate | null>(null);
   const [qrInnerBox, setQrInnerBox] = useState<InnerBox | null>(null);
+  const [qrSelection, setQrSelection] = useState<{ token: number; keys: string[] } | null>(null);
+  const [contentsCrate, setContentsCrate] = useState<Crate | null>(null);
   const [tableRequest, setTableRequest] = useState(0);
   const [innerBoxRequest, setInnerBoxRequest] = useState<InnerBoxRequest>();
   const innerBoxRequestToken = useRef(0);
@@ -263,7 +261,9 @@ export default function Home() {
   );
   const moved = boxes.filter((b) => b.temporary_location),
     toReturn = boxes.filter((b) => due(b, today));
-  const movedInnerBoxes = innerBoxes.filter(innerBoxIsMoved);
+  const movedInnerBoxes = innerBoxes.filter(
+    (box) => innerBoxIsMoved(box) || innerBoxFollowsMovedCrate(box, boxes),
+  );
   const matchingInnerCrateIds = new Set(
     searchInnerBoxes(innerBoxes, boxes, query).flatMap(
       (box) => [box.home_crate_id, currentCrateId(box)].filter(Boolean) as string[],
@@ -447,6 +447,16 @@ export default function Home() {
           grenier2<span className="brand-dot">.</span>
         </a>
         <h1 className="topbar-slogan">Chaque caisse, au bon endroit.</h1>
+        <QrManager
+          boxes={boxes}
+          innerBoxes={innerBoxes}
+          onOpen={edit}
+          onOpenInnerBox={(box) => requestInnerBox(box.id)}
+          requestedCrate={qrCrate}
+          requestedInnerBox={qrInnerBox}
+          requestedSelection={qrSelection}
+          triggerClassName="topbar-qr"
+        />
       </header>
       <main>
         <div className="page-heading">
@@ -484,7 +494,7 @@ export default function Home() {
                 .padStart(2, '0')}
             </strong>
             <span className="stat-icon" title="Objets répertoriés" aria-hidden="true">
-              <PackageOpen />
+              <SprayCan />
             </span>
           </div>
           <div aria-label={`${moved.length + movedInnerBoxes.length} contenants déplacés`}>
@@ -509,6 +519,8 @@ export default function Home() {
             innerBoxes={innerBoxes}
             onChange={() => void refresh()}
             onOpen={edit}
+            onOpenInnerBox={(box) => requestInnerBox(box.id)}
+            onPrintSelection={(keys) => setQrSelection({ token: Date.now(), keys })}
             openRequest={tableRequest}
           />
           <InnerBoxManager
@@ -517,6 +529,7 @@ export default function Home() {
             onChange={() => void refresh()}
             request={innerBoxRequest}
             onPrintQr={(box) => setQrInnerBox({ ...box })}
+            showTableButton={false}
           />
           <ObjectTable
             crates={boxes}
@@ -529,14 +542,6 @@ export default function Home() {
               setCategory('Toutes');
               void refresh();
             }}
-          />
-          <QrManager
-            boxes={boxes}
-            innerBoxes={innerBoxes}
-            onOpen={edit}
-            onOpenInnerBox={(box) => requestInnerBox(box.id)}
-            requestedCrate={qrCrate}
-            requestedInnerBox={qrInnerBox}
           />
         </div>
         <section className="inventory">
@@ -816,12 +821,28 @@ export default function Home() {
               >
                 <ListChecks size={16} /> Tableau des caisses
               </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  setOpen(false);
+                  setContentsCrate(boxes.find((box) => box.id === draft.id) || draft);
+                }}
+              >
+                <Maximize2 size={16} /> Tous les objets
+              </button>
             </div>
           )}
           {draft.id && (
             <div className="detail-movement">
               <span className="where-label">Actuellement</span>
               <strong>{currentLocation(draft)}</strong>
+              {innerBoxes.filter((box) => currentCrateId(box) === draft.id).length > 0 && (
+                <p>
+                  Les {innerBoxes.filter((box) => currentCrateId(box) === draft.id).length} boîte(s)
+                  à l’intérieur suivent cette caisse.
+                </p>
+              )}
               {draft.temporary_location && (
                 <>
                   <p>Place habituelle : {draft.location}</p>
@@ -1128,34 +1149,26 @@ export default function Home() {
                 </div>
               </div>
               <label htmlFor="destination">Emplacement temporaire</label>
-              <Combobox
-                items={places.filter((p) => p !== movement.box.location)}
-                inputValue={movement.destination}
-                onInputValueChange={(destination) =>
-                  setMovement((m) => (m ? { ...m, destination } : m))
+              <input
+                id="destination"
+                required
+                maxLength={100}
+                list="temporary-locations"
+                value={movement.destination}
+                onChange={(event) =>
+                  setMovement((current) =>
+                    current ? { ...current, destination: event.target.value } : current,
+                  )
                 }
-                value={places.includes(movement.destination) ? movement.destination : null}
-                onValueChange={(destination) => {
-                  if (destination) setMovement((m) => (m ? { ...m, destination } : m));
-                }}
-              >
-                <ComboboxInput
-                  id="destination"
-                  required
-                  maxLength={100}
-                  placeholder="Choisir un emplacement ou saisir Bureau…"
-                />
-                <ComboboxContent>
-                  <ComboboxEmpty>Saisissez un nouveau lieu.</ComboboxEmpty>
-                  <ComboboxList>
-                    {(place: string) => (
-                      <ComboboxItem key={place} value={place}>
-                        {place}
-                      </ComboboxItem>
-                    )}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
+                placeholder="Choisir un emplacement ou saisir Bureau…"
+              />
+              <datalist id="temporary-locations">
+                {places
+                  .filter((place) => place !== movement.box.location)
+                  .map((place) => (
+                    <option key={place} value={place} />
+                  ))}
+              </datalist>
               <p className="field-help">
                 Choisissez un rangement existant ou saisissez un autre lieu, comme le bureau.
               </p>
@@ -1287,6 +1300,12 @@ export default function Home() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <CrateContentsEditor
+        crate={contentsCrate}
+        innerBoxes={innerBoxes}
+        onClose={() => setContentsCrate(null)}
+        onSaved={() => void refresh()}
+      />
     </>
   );
 }

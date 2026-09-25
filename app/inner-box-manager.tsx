@@ -18,6 +18,7 @@ import {
   emptyInnerBox,
   innerBoxCode,
   innerBoxCurrentLocation,
+  innerBoxFollowsMovedCrate,
   innerBoxIsMoved,
   type InnerBox,
 } from '@/lib/inner-boxes';
@@ -41,12 +42,14 @@ export default function InnerBoxManager({
   onChange,
   request,
   onPrintQr,
+  showTableButton = true,
 }: {
   innerBoxes: InnerBox[];
   crates: Crate[];
   onChange: () => void;
   request?: InnerBoxRequest;
   onPrintQr: (box: InnerBox) => void;
+  showTableButton?: boolean;
 }) {
   const handledRequest = useRef(0);
   const [tableOpen, setTableOpen] = useState(false);
@@ -216,14 +219,16 @@ export default function InnerBoxManager({
 
   return (
     <>
-      <button
-        className="secondary menu-icon-button"
-        onClick={() => setTableOpen(true)}
-        aria-label="Tableau des boîtes"
-        title="Tableau des boîtes"
-      >
-        <Boxes />
-      </button>
+      {showTableButton && (
+        <button
+          className="secondary menu-icon-button"
+          onClick={() => setTableOpen(true)}
+          aria-label="Tableau des boîtes"
+          title="Tableau des boîtes"
+        >
+          <Boxes />
+        </button>
+      )}
       <button
         className="secondary menu-icon-button"
         onClick={() => setEditor({ ...emptyInnerBox, home_crate_id: crates[0]?.id || '' })}
@@ -296,6 +301,9 @@ export default function InnerBoxManager({
             <div className="detail-movement inner-box-location">
               <span className="where-label">Actuellement</span>
               <strong>{innerBoxCurrentLocation(editor, crates)}</strong>
+              {innerBoxFollowsMovedCrate(editor, crates) && (
+                <p>Cette boîte suit actuellement le déplacement de sa caisse.</p>
+              )}
               <p>Caisse habituelle : {crateName(crates, editor.home_crate_id)}</p>
               {editor.return_date && <p>Retour prévu : {formatDate(editor.return_date)}</p>}
               <div className="crate-actions">

@@ -14,6 +14,8 @@ type Props = {
   onOpenInnerBox: (box: InnerBox) => void;
   requestedCrate?: Crate | null;
   requestedInnerBox?: InnerBox | null;
+  requestedSelection?: { token: number; keys: string[] } | null;
+  triggerClassName?: string;
 };
 type Label = {
   kind: 'crate' | 'box';
@@ -33,8 +35,10 @@ export default function QrManager({
   onOpenInnerBox,
   requestedCrate,
   requestedInnerBox,
+  requestedSelection,
+  triggerClassName = '',
 }: Props) {
-  const [fixedKey, setFixedKey] = useState<string | null>(null);
+  const [fixedKeys, setFixedKeys] = useState<string[] | null>(null);
   const [open, setOpen] = useState(false),
     [tab, setTab] = useState<'make' | 'scan'>('make');
   const [selected, setSelected] = useState(''),
@@ -61,15 +65,15 @@ export default function QrManager({
   const selectedEntities = useMemo(
     () =>
       entities.filter((entity) =>
-        fixedKey ? entity.key === fixedKey : selected === '*' || entity.key === selected,
+        fixedKeys ? fixedKeys.includes(entity.key) : selected === '*' || entity.key === selected,
       ),
-    [entities, selected, fixedKey],
+    [entities, selected, fixedKeys],
   );
   // Le détail impose l’identifiant enregistré : aucune autre caisse ne peut être imprimée.
   useEffect(() => {
     if (!requestedCrate) return;
     const key = `crate:${requestedCrate.id}`;
-    setFixedKey(key);
+    setFixedKeys([key]);
     setSelected(key);
     setTab('make');
     setAction('view');
@@ -79,13 +83,22 @@ export default function QrManager({
   useEffect(() => {
     if (!requestedInnerBox) return;
     const key = `box:${requestedInnerBox.id}`;
-    setFixedKey(key);
+    setFixedKeys([key]);
     setSelected(key);
     setTab('make');
     setAction('view');
     setCopies(1);
     setOpen(true);
   }, [requestedInnerBox]);
+  useEffect(() => {
+    if (!requestedSelection?.keys.length) return;
+    setFixedKeys(requestedSelection.keys);
+    setSelected(requestedSelection.keys[0]);
+    setTab('make');
+    setAction('view');
+    setCopies(1);
+    setOpen(true);
+  }, [requestedSelection]);
   // Empêche une réponse asynchrone ancienne de changer l’étiquette.
   const labelInput = JSON.stringify(
     selectedEntities.map((entity) => ({
@@ -260,11 +273,11 @@ export default function QrManager({
   return (
     <>
       <button
-        className="secondary menu-icon-button"
+        className={`secondary menu-icon-button ${triggerClassName}`.trim()}
         aria-label="QR codes"
         title="QR codes"
         onClick={() => {
-          setFixedKey(null);
+          setFixedKeys(null);
           setError('');
           setOpen(true);
         }}
@@ -295,7 +308,7 @@ export default function QrManager({
             Imprimez vos étiquettes ou retrouvez un contenant avec la caméra. Aucune image n’est
             enregistrée ni envoyée.
           </DialogDescription>
-          <div className="qr-tabs" hidden={!!fixedKey}>
+          <div className="qr-tabs" hidden={!!fixedKeys}>
             <button
               aria-pressed={tab === 'make'}
               className={tab === 'make' ? 'active' : ''}
@@ -323,12 +336,12 @@ export default function QrManager({
                   <label>
                     Caisse ou boîte à encoder
                     <select
-                      value={fixedKey || selected}
-                      disabled={!!fixedKey}
+                      value={fixedKeys ? fixedKeys[0] : selected}
+                      disabled={!!fixedKeys}
                       onChange={(e) => setSelected(e.target.value)}
                     >
-                      {!fixedKey && <option value="*">Tout imprimer ({entities.length})</option>}
-                      {(fixedKey ? selectedEntities : entities).map((entity) => (
+                      {!fixedKeys && <option value="*">Tout imprimer ({entities.length})</option>}
+                      {(fixedKeys ? selectedEntities : entities).map((entity) => (
                         <option key={entity.key} value={entity.key}>
                           {entity.kind === 'crate' ? 'Caisse' : 'Boîte'} ·{' '}
                           {entity.kind === 'crate'

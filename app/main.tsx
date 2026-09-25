@@ -14,7 +14,7 @@ initializeTheme();
 function App() {
   const [session, setSession] = useState<Session | null>(null),
     [ready, setReady] = useState(!supabase),
-    [email, setEmail] = useState(allowedEmail),
+    [email, setEmail] = useState(''),
     [busy, setBusy] = useState(false),
     [sent, setSent] = useState(false),
     [error, setError] = useState(''),
