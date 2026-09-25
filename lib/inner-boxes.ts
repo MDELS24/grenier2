@@ -1,4 +1,4 @@
-import { countItems, normalize, type Crate } from './crates.ts';
+import { countItems, currentLocation, normalize, type Crate } from './crates.ts';
 
 /** Petite boîte rangée dans une caisse ; `home_crate_id` reste sa destination de retour. */
 export type InnerBox = {
@@ -48,7 +48,16 @@ export function crateName(crates: Crate[], id: string | null) {
 
 export function innerBoxCurrentLocation(box: InnerBox, crates: Crate[]) {
   if (box.temporary_location) return box.temporary_location;
-  return crateName(crates, currentCrateId(box));
+  const crate = crates.find((candidate) => candidate.id === currentCrateId(box));
+  if (!crate) return 'Caisse introuvable';
+  return currentLocation(crate);
+}
+
+/** Indique si la boîte suit le déplacement de la caisse qui la contient. */
+export function innerBoxFollowsMovedCrate(box: InnerBox, crates: Crate[]) {
+  if (innerBoxIsMoved(box)) return false;
+  const crate = crates.find((candidate) => candidate.id === box.home_crate_id);
+  return Boolean(crate?.temporary_location);
 }
 
 export const countInnerBoxItems = (box: InnerBox) => countItems(box.items);
@@ -64,6 +73,7 @@ export function searchInnerBoxes(innerBoxes: InnerBox[], crates: Crate[], query:
         box.items,
         box.notes,
         box.temporary_location,
+        innerBoxCurrentLocation(box, crates),
         crateName(crates, box.home_crate_id),
         crateName(crates, currentCrateId(box)),
       ].join(' '),
