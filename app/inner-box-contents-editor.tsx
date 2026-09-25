@@ -57,7 +57,8 @@ export default function InnerBoxContentsEditor({ box, onClose, onSaved }: Props)
               <Boxes size={18} /> {box ? innerBoxCode(box) : ''} · {box?.name}
             </h3>
             <label>
-              Objets dans cette boîte <span className="muted">— un par ligne</span>
+              <span className="contents-label-title">Objets dans cette boîte</span>
+              <span className="muted contents-label-help">Un objet par ligne</span>
               <textarea
                 rows={18}
                 maxLength={10000}

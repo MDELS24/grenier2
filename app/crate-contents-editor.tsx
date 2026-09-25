@@ -77,7 +77,8 @@ export default function CrateContentsEditor({ crate, innerBoxes, onClose, onSave
               <Archive size={18} /> Caisse · {crate?.name}
             </h3>
             <label>
-              Objets directement dans la caisse <span className="muted">— un par ligne</span>
+              <span className="contents-label-title">Objets directement dans la caisse</span>
+              <span className="muted contents-label-help">Un objet par ligne</span>
               <textarea
                 rows={14}
                 maxLength={10000}
@@ -92,7 +93,8 @@ export default function CrateContentsEditor({ crate, innerBoxes, onClose, onSave
                 <Boxes size={18} /> {innerBoxCode(box)} · {box.name}
               </h3>
               <label>
-                Objets dans cette boîte <span className="muted">— un par ligne</span>
+                <span className="contents-label-title">Objets dans cette boîte</span>
+                <span className="muted contents-label-help">Un objet par ligne</span>
                 <textarea
                   rows={10}
                   maxLength={10000}

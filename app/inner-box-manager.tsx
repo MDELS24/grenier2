@@ -381,7 +381,8 @@ export default function InnerBoxManager({
                 </select>
               </label>
               <label>
-                Contenu <span className="muted">— un objet par ligne</span>
+                Contenu
+                <span className="muted contents-label-help">Un objet par ligne</span>
                 <textarea
                   rows={5}
                   maxLength={10000}
